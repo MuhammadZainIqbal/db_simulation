@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deadlock Detection | DB Engine Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f3f4f6;
+        }
+        
+        .gradient-bg-red {
+            background: linear-gradient(120deg, #dc2626, #ef4444);
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(220, 38, 38, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+            }
+        }
+        
+        .shimmer {
+            background: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.2) 25%,
+                rgba(255, 255, 255, 0.2) 50%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        
+        .node-anim {
+            transition: all 0.3s ease;
+        }
+        
+        .node-anim:hover {
+            transform: scale(1.05);
+            filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.5));
+        }
+        
+        .step-card {
+            transition: all 0.3s ease;
+        }
+        
+        .step-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .deadlock-pulse {
+            animation: deadlockPulse 2s infinite;
+        }
+        
+        @keyframes deadlockPulse {
+            0% {
+                background-color: rgba(254, 226, 226, 0.6);
+            }
+            50% {
+                background-color: rgba(254, 202, 202, 0.8);
+            }
+            100% {
+                background-color: rgba(254, 226, 226, 0.6);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header -->
+    <div class="gradient-bg-red py-8 px-4 sm:px-6 lg:px-8 text-white">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold mb-2">Deadlock Detection</h1>
+                    <p class="text-red-100">Wait-For Graph Analysis in Database Systems</p>
+                </div>
+                <a href="/" class="mt-4 md:mt-0 inline-flex items-center bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg px-4 py-2 text-white transition duration-300">
+                    <i class="fas fa-home mr-2"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8">
+        <div class="bg-white rounded-2xl shadow-xl p-8 border border-red-100 mb-8">
+            <div class="flex items-center mb-6">
+                <div class="bg-red-100 p-3 rounded-lg mr-4">
+                    <i class="fas fa-exclamation-triangle text-2xl text-red-600"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">About Deadlocks</h2>
+                    <p class="text-gray-500">Circular Wait Conditions in Database Systems</p>
+                </div>
+            </div>
+            
+            <div class="prose max-w-none text-gray-600">
+                <p class="mb-4">
+                    Deadlocks occur in database systems when two or more transactions are waiting for each other to release locks,
+                    creating a circular dependency where none of the transactions can proceed.
+                </p>
+                <p class="mb-4">
+                    Database systems detect deadlocks by building a <span class="font-medium text-red-700">wait-for graph</span> and checking for cycles:
+                </p>
+                <ul class="list-disc pl-5 mb-6 space-y-2">
+                    <li><span class="font-medium text-red-700">Nodes</span> - Represent transactions in the system</li>
+                    <li><span class="font-medium text-red-700">Directed edges</span> - Transaction T1 → T2 means T1 is waiting for a resource held by T2</li>
+                    <li><span class="font-medium text-red-700">Cycle detection</span> - A cycle indicates a deadlock situation</li>
+                </ul>
+                <p>When a deadlock is detected, the system must choose a <span class="font-medium text-red-700">victim transaction</span> to abort, breaking the cycle and allowing other transactions to proceed.</p>
+            </div>
+            
+            <div class="flex flex-wrap gap-4 mt-6">
+                <button id="runSimulation" class="pulse-animation flex items-center px-6 py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition duration-300 shadow-md">
+                    <i class="fas fa-play-circle mr-2"></i> Run Deadlock Simulation
+                </button>
+                
+                <button id="explainerBtn" class="flex items-center px-6 py-3 bg-white text-red-600 font-medium rounded-lg border border-red-600 hover:bg-red-50 transition duration-300 shadow-sm">
+                    <i class="fas fa-info-circle mr-2"></i> How Deadlock Detection Works
+                </button>
+            </div>
+        </div>
+        
+        <!-- Loading Indicator -->
+        <div id="loading" class="hidden">
+            <div class="bg-white rounded-2xl shadow-xl border border-red-100 p-8 text-center mb-8">
+                <div class="flex flex-col items-center">
+                    <div class="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p class="text-lg font-medium text-red-700">Analyzing Transaction Dependencies...</p>
+                    <p class="text-gray-500 mt-2">Building wait-for graph and detecting cycles</p>
+                </div>
+                
+                <div class="mt-8 max-w-md mx-auto">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-sm text-gray-500">Processing Transactions</span>
+                        <span class="text-sm text-red-600 shimmer rounded px-2">In progress</span>
+                    </div>
+                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div id="progressBar" class="h-full bg-red-600 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Results Container -->
+        <div id="results" class="hidden fade-in">
+            <!-- Summary Card -->
+            <div class="bg-white rounded-2xl shadow-xl p-8 border border-red-100 mb-8">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
+                    <div class="flex items-center">
+                        <div id="statusIcon" class="bg-green-100 p-3 rounded-lg mr-4">
+                            <i class="fas fa-check text-2xl text-green-600"></i>
+                        </div>
+                        <div>
+                            <h2 id="resultTitle" class="text-2xl font-bold text-gray-800">Simulation Complete</h2>
+                            <p id="explanationText" class="text-gray-600"></p>
+                        </div>
+                    </div>
+                    <div id="deadlockBadge" class="hidden px-4 py-2 bg-red-100 rounded-lg">
+                        <div class="flex items-center">
+                            <i class="fas fa-exclamation-circle text-red-600 mr-2"></i>
+                            <span class="font-medium text-red-800" id="deadlockCount">0 Deadlocks Detected</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="deadlockInfo" class="mb-6 p-6 border border-red-200 bg-red-50 rounded-lg hidden">
+                    <h3 class="text-lg font-medium text-red-800 mb-4 flex items-center">
+                        <i class="fas fa-exclamation-triangle text-red-600 mr-2"></i>
+                        Deadlock Detected
+                    </h3>
+                    <div id="deadlockList" class="text-red-700 space-y-2"></div>
+                </div>
+            </div>
+            
+            <!-- Wait-For Graph and Resources Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- Wait-For Graph Card -->
+                <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-red-100">
+                    <div class="border-b border-gray-200 bg-gray-50 px-6 py-4">
+                        <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-project-diagram text-red-600 mr-2"></i>
+                            Wait-For Graph
+                        </h3>
+                        <p class="text-sm text-gray-500 mt-1">
+                            Visualizing transaction dependencies and deadlock cycles
+                        </p>
+                    </div>
+                    <div class="p-6">
+                        <div id="graphContainer" class="border border-gray-200 rounded-lg p-4 flex justify-center bg-white min-h-[300px] items-center">
+                            <img id="graphImage" class="max-w-full h-auto node-anim" alt="Wait-For Graph" />
+                        </div>
+                        <div class="mt-4 text-sm text-gray-600 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <div class="flex items-start">
+                                <i class="fas fa-info-circle text-blue-600 mt-1 mr-2"></i>
+                                <div>
+                                    <p class="mb-2">The wait-for graph shows relationships between transactions:</p>
+                                    <ul class="list-disc pl-5 space-y-1">
+                                        <li>Each node (T1, T2, etc.) represents a transaction</li>
+                                        <li>An arrow from T1 to T2 means T1 is waiting for a resource held by T2</li>
+                                        <li>A cycle in this graph indicates a deadlock (shown in red)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Resources & Locks Card -->
+                <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-red-100">
+                    <div class="border-b border-gray-200 bg-gray-50 px-6 py-4">
+                        <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-lock text-red-600 mr-2"></i>
+                            Resources & Locks
+                        </h3>
+                        <p class="text-sm text-gray-500 mt-1">
+                            Current resource allocation and waiting transactions
+                        </p>
+                    </div>
+                    <div class="p-6">
+                        <div class="overflow-x-auto mb-4">
+                            <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg overflow-hidden">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resource</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Held By</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waiting Transactions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="resourcesTable" class="bg-white divide-y divide-gray-200">
+                                    <!-- Resources will be listed here -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+                            <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                <div class="text-xl font-bold text-blue-600 mb-1" id="resourceCount">0</div>
+                                <div class="text-xs text-blue-800 uppercase font-medium">Total Resources</div>
+                            </div>
+                            <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
+                                <div class="text-xl font-bold text-yellow-600 mb-1" id="locksCount">0</div>
+                                <div class="text-xs text-yellow-800 uppercase font-medium">Active Locks</div>
+                            </div>
+                            <div class="bg-red-50 p-3 rounded-lg border border-red-100">
+                                <div class="text-xl font-bold text-red-600 mb-1" id="waitingCount">0</div>
+                                <div class="text-xs text-red-800 uppercase font-medium">Waiting Txns</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Simulation Steps Card -->
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-red-100 mb-8">
+                <div class="border-b border-gray-200 bg-gray-50 px-6 py-4">
+                    <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                        <i class="fas fa-history text-red-600 mr-2"></i>
+                        Simulation Steps
+                    </h3>
+                    <p class="text-sm text-gray-500 mt-1">
+                        Chronological steps from transaction initialization to deadlock resolution
+                    </p>
+                </div>
+                <div class="p-6">
+                    <div class="space-y-4" id="simulationSteps">
+                        <!-- Steps will be listed here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Deadlock Explainer Modal -->
+            <div id="explainerModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+                <div class="bg-white rounded-xl shadow-2xl max-w-4xl mx-4 w-full max-h-[90vh] overflow-y-auto">
+                    <div class="p-6 border-b border-gray-200">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-2xl font-bold text-gray-900">How Deadlock Detection Works</h3>
+                            <button id="closeExplainer" class="text-gray-400 hover:text-gray-500">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="prose max-w-none">
+                            <p>Deadlock detection is a critical component of database systems that identifies situations where transactions are stuck waiting for each other in a circular dependency.</p>
+                            
+                            <h4 class="text-lg font-semibold text-red-700 mt-4">What Causes Deadlocks?</h4>
+                            <p>Deadlocks occur when the following conditions are simultaneously present:</p>
+                            <ol class="list-decimal pl-5 space-y-2">
+                                <li><strong>Mutual Exclusion:</strong> Resources can be used by only one transaction at a time</li>
+                                <li><strong>Hold and Wait:</strong> Transactions hold resources while waiting for others</li>
+                                <li><strong>No Preemption:</strong> Resources cannot be forcibly taken from transactions</li>
+                                <li><strong>Circular Wait:</strong> A circular chain of transactions exists where each is waiting for a resource held by the next</li>
+                            </ol>
+                            
+                            <h4 class="text-lg font-semibold text-red-700 mt-4">Wait-For Graph Algorithm</h4>
+                            <p>The most common approach to deadlock detection uses a wait-for graph:</p>
+                            
+                            <ol class="list-decimal pl-5 space-y-2">
+                                <li>Create a directed graph where nodes represent transactions</li>
+                                <li>Add an edge from T1 to T2 if T1 is waiting for a resource held by T2</li>
+                                <li>Periodically search for cycles in the graph using algorithms like depth-first search</li>
+                                <li>If a cycle is found, a deadlock exists</li>
+                            </ol>
+                            
+                            <h4 class="text-lg font-semibold text-red-700 mt-4">Deadlock Resolution</h4>
+                            <p>Once a deadlock is detected, the system must resolve it by:</p>
+                            <ol class="list-decimal pl-5 space-y-2">
+                                <li>Selecting a victim transaction to abort (usually based on factors like age, priority, or work done)</li>
+                                <li>Rolling back the victim transaction, releasing all its locks</li>
+                                <li>Allowing the victim transaction to restart after a delay</li>
+                            </ol>
+                            
+                            <h4 class="text-lg font-semibold text-red-700 mt-4">Deadlock Prevention vs. Detection</h4>
+                            <p>Database systems can handle deadlocks through:</p>
+                            <ul class="list-disc pl-5 space-y-2">
+                                <li><strong>Prevention:</strong> Ensure that one of the necessary conditions for deadlock never occurs (e.g., requiring transactions to request all locks at once)</li>
+                                <li><strong>Detection:</strong> Allow deadlocks to occur but detect and resolve them (the approach shown in this simulation)</li>
+                                <li><strong>Avoidance:</strong> Carefully manage resource allocation to ensure the system never enters an unsafe state</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
+                        <button id="closeExplainerBtn" class="px-4 py-2 bg-red-600 text-white font-medium rounded hover:bg-red-700 transition">
+                            Got it
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Modal handling
+        const explainerBtn = document.getElementById('explainerBtn');
+        const explainerModal = document.getElementById('explainerModal');
+        const closeExplainer = document.getElementById('closeExplainer');
+        const closeExplainerBtn = document.getElementById('closeExplainerBtn');
+        
+        explainerBtn.addEventListener('click', () => {
+            explainerModal.classList.remove('hidden');
+        });
+        
+        closeExplainer.addEventListener('click', () => {
+            explainerModal.classList.add('hidden');
+        });
+        
+        closeExplainerBtn.addEventListener('click', () => {
+            explainerModal.classList.add('hidden');
+        });
+        
+        explainerModal.addEventListener('click', (e) => {
+            if (e.target === explainerModal) {
+                explainerModal.classList.add('hidden');
+            }
+        });
+        
+        // Run simulation
+        document.getElementById('runSimulation').addEventListener('click', async function() {
+            const button = this;
+            // Disable button to prevent multiple clicks
+            button.disabled = true;
+            button.classList.add('opacity-70', 'cursor-not-allowed');
+            
+            // Show loading indicator and progress animation
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('results').classList.add('hidden');
+            
+            // Animate progress bar
+            const progressBar = document.getElementById('progressBar');
+            let progress = 0;
+            
+            const progressInterval = setInterval(() => {
+                progress += 3;
+                if (progress > 95) {
+                    // Cap at 95% until we get response
+                    progress = 95;
+                }
+                progressBar.style.width = `${progress}%`;
+            }, 150);
+            
+            // Set timeout for request
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Request timed out')), 20000); // 20 second timeout
+            });
+            
+            try {
+                // Race the fetch against a timeout
+                const response = await Promise.race([
+                    fetch('/api/run-deadlock'),
+                    timeoutPromise
+                ]);
+                
+                // Handle HTTP error status
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    if (response.status === 429) {
+                        // Rate limit error - show retry after cooldown
+                        throw new Error(`Too many requests. ${errorData.error}`);
+                    } else {
+                        throw new Error(`Server error: ${errorData.error || response.statusText}`);
+                    }
+                }
+                
+                const data = await response.json();
+                
+                // Check if there's an error from the server
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Clear the interval and set progress to 100%
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+                
+                // Short delay to show completed progress
+                setTimeout(() => {
+                    // Hide loading and show results
+                    document.getElementById('loading').classList.add('hidden');
+                    document.getElementById('results').classList.remove('hidden');
+                    
+                    // Update explanation
+                    document.getElementById('explanationText').textContent = data.explanation || 'Deadlock detection simulation complete.';
+                    
+                    // Update deadlock information
+                    const deadlockInfo = document.getElementById('deadlockInfo');
+                    const deadlockList = document.getElementById('deadlockList');
+                    const deadlockBadge = document.getElementById('deadlockBadge');
+                    const statusIcon = document.getElementById('statusIcon');
+                    const resultTitle = document.getElementById('resultTitle');
+                    
+                    if (data.deadlocks && data.deadlocks.length > 0) {
+                        // Update title and icon for deadlock case
+                        statusIcon.className = 'bg-red-100 p-3 rounded-lg mr-4';
+                        statusIcon.innerHTML = '<i class="fas fa-exclamation-triangle text-2xl text-red-600"></i>';
+                        resultTitle.textContent = 'Deadlock Detected';
+                        resultTitle.className = 'text-2xl font-bold text-red-800';
+                        
+                        // Show deadlock count badge
+                        deadlockBadge.classList.remove('hidden');
+                        document.getElementById('deadlockCount').textContent = `${data.deadlocks.length} Deadlock${data.deadlocks.length > 1 ? 's' : ''} Detected`;
+                        
+                        // Show deadlock info section
+                        deadlockInfo.classList.remove('hidden');
+                        deadlockInfo.classList.add('deadlock-pulse');
+                        
+                        // Add deadlock details
+                        let deadlockHtml = '';
+                        data.deadlocks.forEach((deadlock, index) => {
+                            deadlockHtml += `
+                                <div class="flex items-start p-3 bg-white bg-opacity-60 rounded-lg border border-red-300">
+                                    <div class="bg-red-100 p-2 rounded-full text-red-600 mr-3">
+                                        <span class="font-bold">${index + 1}</span>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium">Deadlock Cycle</p>
+                                        <p class="text-sm text-red-600 mt-1">${deadlock.description}</p>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        deadlockList.innerHTML = deadlockHtml;
+                    } else {
+                        // Keep default success styling
+                        deadlockList.innerHTML = '<p>No deadlocks detected in this simulation.</p>';
+                    }
+                    
+                    // Update the wait-for graph image
+                    if (data.graph_image) {
+                        document.getElementById('graphImage').src = 'data:image/png;base64,' + data.graph_image;
+                    } else {
+                        console.error("Missing graph image in response");
+                    }
+                    
+                    // Update resources table
+                    const resourcesTable = document.getElementById('resourcesTable');
+                    resourcesTable.innerHTML = '';
+                    
+                    // Create a mapping of resources
+                    const resourceMap = new Map();
+                    if (data.resources && Array.isArray(data.resources)) {
+                        data.resources.forEach(resource => {
+                            resourceMap.set(resource.id, {
+                                name: resource.name,
+                                heldBy: null,
+                                waitingTxns: []
+                            });
+                        });
+                    } else {
+                        console.error("Missing or invalid resources data in response");
+                    }
+                    
+                    // Process locks to populate the resource map
+                    if (data.locks && Array.isArray(data.locks)) {
+                        data.locks.forEach(lock => {
+                            const resource = resourceMap.get(lock.resource_id);
+                            if (resource) {
+                                if (lock.lock_type === 'EXCLUSIVE') {
+                                    resource.heldBy = `T${lock.transaction_id}`;
+                                } else if (lock.lock_type === 'WAITING') {
+                                    resource.waitingTxns.push(`T${lock.transaction_id}`);
+                                }
+                            }
+                        });
+                    } else {
+                        console.error("Missing or invalid locks data in response");
+                    }
+                    
+                    // Resource statistics
+                    document.getElementById('resourceCount').textContent = resourceMap.size;
+                    
+                    // Count locks and waiting transactions
+                    let locksCount = 0;
+                    let waitingCount = 0;
+                    
+                    // Build the resources table
+                    resourceMap.forEach((resource, id) => {
+                        const row = document.createElement('tr');
+                        
+                        // Count statistics
+                        if (resource.heldBy) {
+                            locksCount++;
+                        }
+                        if (resource.waitingTxns.length > 0) {
+                            waitingCount += resource.waitingTxns.length;
+                        }
+                        
+                        // Style row based on lock status
+                        if (resource.waitingTxns.length > 0) {
+                            row.classList.add('bg-red-50');
+                        } else if (resource.heldBy) {
+                            row.classList.add('bg-yellow-50');
+                        }
+                        
+                        row.innerHTML = `
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                        <i class="fas fa-database text-sm"></i>
+                                    </div>
+                                    <div class="ml-3">
+                                        <p class="text-sm font-medium text-gray-800">${resource.name}</p>
+                                        <p class="text-xs text-gray-500">ID: ${id}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm">
+                                ${resource.heldBy ? 
+                                    `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        <i class="fas fa-lock-open text-xs mr-1"></i> ${resource.heldBy}
+                                    </span>` : 
+                                    '<span class="text-gray-400">None</span>'}
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm">
+                                ${resource.waitingTxns.length > 0 ? 
+                                    resource.waitingTxns.map(txn => 
+                                        `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 mr-1 mb-1">
+                                            <i class="fas fa-clock text-xs mr-1"></i> ${txn}
+                                        </span>`
+                                    ).join(' ') : 
+                                    '<span class="text-gray-400">None</span>'}
+                            </td>
+                        `;
+                        
+                        resourcesTable.appendChild(row);
+                    });
+                    
+                    // Update counters
+                    document.getElementById('locksCount').textContent = locksCount;
+                    document.getElementById('waitingCount').textContent = waitingCount;
+                    
+                    // Update simulation steps
+                    const simulationSteps = document.getElementById('simulationSteps');
+                    simulationSteps.innerHTML = '';
+                    
+                    if (data.steps && Array.isArray(data.steps)) {
+                        data.steps.forEach((step, index) => {
+                            const stepDiv = document.createElement('div');
+                            stepDiv.className = `step-card p-4 ${step.is_deadlock ? 'bg-red-50 border border-red-200' : 'bg-gray-50 border border-gray-200'} rounded-lg`;
+                            
+                            // Determine icon based on step type
+                            let iconClass, iconBgClass, stepTitle;
+                            
+                            if (step.is_deadlock) {
+                                iconClass = 'fas fa-exclamation-triangle text-red-600';
+                                iconBgClass = 'bg-red-100';
+                                stepTitle = 'Deadlock Detected';
+                            } else if (step.victim) {
+                                iconClass = 'fas fa-user-times text-yellow-600';
+                                iconBgClass = 'bg-yellow-100';
+                                stepTitle = 'Victim Selection';
+                            } else if (step.action && step.action.includes('acquires')) {
+                                iconClass = 'fas fa-lock text-green-600';
+                                iconBgClass = 'bg-green-100';
+                                stepTitle = 'Lock Acquisition';
+                            } else if (step.action && step.action.includes('waits')) {
+                                iconClass = 'fas fa-hourglass-half text-yellow-600';
+                                iconBgClass = 'bg-yellow-100';
+                                stepTitle = 'Wait State';
+                            } else {
+                                iconClass = 'fas fa-arrow-right text-blue-600';
+                                iconBgClass = 'bg-blue-100';
+                                stepTitle = 'Transaction Step';
+                            }
+                            
+                            stepDiv.innerHTML = `
+                                <div class="flex items-start">
+                                    <div class="flex-shrink-0 ${iconBgClass} h-8 w-8 rounded-full flex items-center justify-center mr-3">
+                                        <i class="${iconClass}"></i>
+                                    </div>
+                                    <div class="flex-grow">
+                                        <div class="flex justify-between items-start">
+                                            <div>
+                                                <p class="text-sm font-medium text-gray-900">${stepTitle}</p>
+                                                <p class="text-sm text-gray-600 mt-1">${step.action || 'Unknown action'}</p>
+                                            </div>
+                                            <span class="text-xs text-gray-500 bg-white px-2 py-1 rounded-full border">
+                                                Step ${step.step}
+                                            </span>
+                                        </div>
+                                        
+                                        ${step.lock ? `
+                                        <div class="mt-3 text-xs bg-white bg-opacity-70 p-2 rounded border border-gray-200">
+                                            <div class="grid grid-cols-3 gap-2">
+                                                <div>
+                                                    <span class="font-medium text-gray-500">Transaction:</span>
+                                                    <span class="font-mono">T${step.lock.txn_id}</span>
+                                                </div>
+                                                <div>
+                                                    <span class="font-medium text-gray-500">Resource:</span>
+                                                    <span class="font-mono">${step.lock.resource_id}</span>
+                                                </div>
+                                                <div>
+                                                    <span class="font-medium text-gray-500">Lock Type:</span>
+                                                    <span class="font-mono">${step.lock.lock_type}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        ` : ''}
+                                        
+                                        ${step.is_deadlock ? `
+                                        <div class="mt-3 bg-red-100 bg-opacity-70 p-2 rounded border border-red-200 text-red-800 text-sm">
+                                            <i class="fas fa-exclamation-circle mr-1"></i>
+                                            Circular wait detected! This requires deadlock resolution.
+                                        </div>
+                                        ` : ''}
+                                        
+                                        ${step.victim ? `
+                                        <div class="mt-3 bg-yellow-100 bg-opacity-70 p-2 rounded border border-yellow-200 text-yellow-800 text-sm">
+                                            <i class="fas fa-user-slash mr-1"></i>
+                                            Transaction T${step.victim} selected as victim for rollback
+                                        </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            `;
+                            
+                            simulationSteps.appendChild(stepDiv);
+                        });
+                    } else {
+                        simulationSteps.innerHTML = '<div class="p-4 bg-gray-50 border border-gray-200 rounded-lg">No simulation steps available</div>';
+                    }
+                    
+                    // Re-enable button after a small delay
+                    setTimeout(() => {
+                        button.disabled = false;
+                        button.classList.remove('opacity-70', 'cursor-not-allowed');
+                    }, 1000);
+                    
+                }, 500);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                clearInterval(progressInterval);
+                
+                // Determine error type and provide appropriate message
+                let errorMessage = 'An error occurred while running the simulation.';
+                let retryDelay = 2; // Default retry delay in seconds
+                
+                if (error.message.includes('timeout')) {
+                    errorMessage = 'The server took too long to respond. Please try again.';
+                } else if (error.message.includes('Too many requests')) {
+                    errorMessage = error.message;
+                    retryDelay = 3; // Wait a bit longer for rate limit errors
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorMessage = 'Could not connect to the server. Please check your connection and try again.';
+                } else if (error.message.includes('Server error')) {
+                    errorMessage = error.message;
+                }
+                
+                // Show error message with auto-retry countdown
+                document.getElementById('loading').innerHTML = `
+                    <div class="bg-white rounded-2xl shadow-xl border border-red-100 p-8 text-center mb-8">
+                        <div class="flex flex-col items-center">
+                            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                                <i class="fas fa-exclamation-triangle text-xl text-red-600"></i>
+                            </div>
+                            <p class="text-lg font-medium text-red-700 mb-2">Simulation Error</p>
+                            <p class="text-gray-500 mb-6">${errorMessage}</p>
+                            <div>
+                                <button id="retryButton" class="px-6 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition">
+                                    <i class="fas fa-redo mr-2"></i> Try Again <span id="countdownDisplay"></span>
+                                </button>
+                                <div class="mt-3 text-sm text-gray-400">
+                                    Auto-retry in <span id="countdown">${retryDelay}</span> seconds...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Set up auto-retry countdown
+                let countdownValue = retryDelay;
+                const countdownElement = document.getElementById('countdown');
+                
+                const countdownInterval = setInterval(() => {
+                    countdownValue--;
+                    if (countdownElement) {
+                        countdownElement.textContent = countdownValue;
+                    }
+                    
+                    if (countdownValue <= 0) {
+                        clearInterval(countdownInterval);
+                        document.getElementById('loading').classList.add('hidden');
+                        button.disabled = false;
+                        button.classList.remove('opacity-70', 'cursor-not-allowed');
+                        button.click(); // Auto-retry
+                    }
+                }, 1000);
+                
+                // Add manual retry button handler
+                document.getElementById('retryButton').addEventListener('click', () => {
+                    clearInterval(countdownInterval);
+                    document.getElementById('loading').classList.add('hidden');
+                    button.disabled = false;
+                    button.classList.remove('opacity-70', 'cursor-not-allowed');
+                    setTimeout(() => button.click(), 100); // Small delay to ensure UI updates
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MVCC Simulation | DB Engine Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f3f4f6;
+        }
+        
+        .gradient-bg-blue {
+            background: linear-gradient(120deg, #1e40af, #3b82f6);
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+            }
+        }
+        
+        .shimmer {
+            background: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.2) 25%,
+                rgba(255, 255, 255, 0.2) 50%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        
+        .step-card {
+            transition: all 0.3s ease;
+        }
+        
+        .step-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .version-row {
+            transition: all 0.2s ease;
+        }
+        
+        .version-row:hover {
+            background-color: #e0f2fe;
+        }
+        
+        .transactions-timeline {
+            position: relative;
+            overflow-x: auto;
+        }
+        
+        .timeline-track {
+            position: relative;
+            padding-bottom: 30px;
+        }
+        
+        .timeline-track::before {
+            content: '';
+            position: absolute;
+            height: 2px;
+            top: 50%;
+            left: 0;
+            right: 0;
+            background-color: #e5e7eb;
+            z-index: 1;
+        }
+        
+        .timeline-event {
+            position: relative;
+            z-index: 2;
+            transition: all 0.3s ease;
+        }
+        
+        .timeline-event:hover {
+            transform: scale(1.05);
+        }
+        
+        .timeline-connection {
+            position: absolute;
+            height: 2px;
+            background-color: #93c5fd;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1;
+        }
+        
+        .table-shadow {
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .zoom-on-hover {
+            transition: transform 0.2s ease-in-out;
+        }
+        
+        .zoom-on-hover:hover {
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header -->
+    <div class="gradient-bg-blue py-8 px-4 sm:px-6 lg:px-8 text-white">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold mb-2">Multi-Version Concurrency Control</h1>
+                    <p class="text-blue-100">Exploring version-based transaction isolation</p>
+                </div>
+                <a href="/" class="mt-4 md:mt-0 inline-flex items-center bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg px-4 py-2 text-white transition duration-300">
+                    <i class="fas fa-home mr-2"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8">
+        <div class="bg-white rounded-2xl shadow-xl p-8 border border-blue-100 mb-8">
+            <div class="flex items-center mb-6">
+                <div class="bg-blue-100 p-3 rounded-lg mr-4">
+                    <i class="fas fa-layer-group text-2xl text-blue-600"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">About MVCC</h2>
+                    <p class="text-gray-500">Multi-Version Concurrency Control in Database Systems</p>
+                </div>
+            </div>
+            
+            <div class="prose max-w-none text-gray-600">
+                <p class="mb-4">
+                    MVCC (Multi-Version Concurrency Control) is a concurrency control method used by database management systems
+                    to provide concurrent access to the database without traditional read locks.
+                </p>
+                <p class="mb-4">
+                    Instead of overwriting data directly, MVCC creates a new <span class="font-medium text-blue-700">version</span> of the data whenever it's modified.
+                    Each transaction works with a consistent snapshot of the database, seeing only committed changes that were complete before the transaction started.
+                </p>
+                <p>
+                    This approach offers several key advantages:
+                </p>
+                <ul class="list-disc pl-5 mb-6 space-y-2">
+                    <li><span class="font-medium text-blue-700">Readers don't block writers</span> - Read operations don't acquire locks, improving concurrency</li>
+                    <li><span class="font-medium text-blue-700">Writers don't block readers</span> - Write operations don't block readers, as readers see older versions</li>
+                    <li><span class="font-medium text-blue-700">Consistent snapshots</span> - Transactions see a consistent state of the database from when they started</li>
+                    <li><span class="font-medium text-blue-700">Support for isolation levels</span> - Different transaction isolation levels can be implemented</li>
+                </ul>
+            </div>
+            
+            <div class="flex flex-wrap gap-4 mt-6">
+                <button id="runSimulation" class="pulse-animation flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition duration-300 shadow-md">
+                    <i class="fas fa-play-circle mr-2"></i> Run MVCC Simulation
+                </button>
+                
+                <button id="explainerBtn" class="flex items-center px-6 py-3 bg-white text-blue-600 font-medium rounded-lg border border-blue-600 hover:bg-blue-50 transition duration-300 shadow-sm">
+                    <i class="fas fa-info-circle mr-2"></i> How MVCC Works
+                </button>
+            </div>
+        </div>
+        
+        <!-- Loading Indicator -->
+        <div id="loading" class="hidden">
+            <div class="bg-white rounded-2xl shadow-xl border border-blue-100 p-8 text-center mb-8">
+                <div class="flex flex-col items-center">
+                    <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p class="text-lg font-medium text-blue-700">Simulating MVCC Transactions...</p>
+                    <p class="text-gray-500 mt-2">Creating versions and processing operations</p>
+                </div>
+                
+                <div class="mt-8 max-w-md mx-auto">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-sm text-gray-500">Processing Transactions</span>
+                        <span class="text-sm text-blue-600 shimmer rounded px-2">In progress</span>
+                    </div>
+                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div id="progressBar" class="h-full bg-blue-600 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Results Container -->
+        <div id="results" class="hidden fade-in">
+            <!-- Summary Card -->
+            <div class="bg-white rounded-2xl shadow-xl p-8 border border-blue-100 mb-8">
+                <div class="flex items-center mb-6">
+                    <div class="bg-blue-100 p-3 rounded-lg mr-4">
+                        <i class="fas fa-check-circle text-2xl text-blue-600"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">Simulation Complete</h2>
+                        <p id="explanationText" class="text-gray-600"></p>
+                    </div>
+                </div>
+                
+                <!-- Transaction Timeline Visualization -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+                        <i class="fas fa-history text-blue-600 mr-2"></i>
+                        Transaction Timeline Visualization
+                    </h3>
+                    
+                    <div class="transactions-timeline bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <div id="timelineVisualization" class="timeline-track min-h-[100px] my-4">
+                            <!-- Timeline events will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- State Changes -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+                    <div class="bg-gray-50 rounded-lg p-6 border border-gray-200 zoom-on-hover">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+                            <i class="fas fa-hourglass-start text-blue-600 mr-2"></i
+                            Initial State
+                        </h3>
+                        <div id="initialState" class="table-shadow"></div>
+                    </div>
+                    
+                    <div class="bg-gray-50 rounded-lg p-6 border border-gray-200 zoom-on-hover">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+                            <i class="fas fa-hourglass-end text-blue-600 mr-2"></i>
+                            Final State
+                        </h3>
+                        <div id="finalState" class="table-shadow"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- MVCC Detailed Results -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- Transaction History -->
+                <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-blue-100">
+                    <div class="border-b border-gray-200 bg-gray-50 px-6 py-4">
+                        <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-list-ul text-blue-600 mr-2"></i>
+                            Transaction History
+                        </h3>
+                        <p class="text-sm text-gray-500 mt-1">
+                            Chronological operations and events in the MVCC system
+                        </p>
+                    </div>
+                    <div class="p-6">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg overflow-hidden">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="timelineBody" class="bg-white divide-y divide-gray-200">
+                                    <!-- Timeline entries will be inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Data Versions -->
+                <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-blue-100">
+                    <div class="border-b border-gray-200 bg-gray-50 px-6 py-4">
+                        <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-code-branch text-blue-600 mr-2"></i>
+                            Data Versions
+                        </h3>
+                        <p class="text-sm text-gray-500 mt-1">
+                            All versions of data objects created during the simulation
+                        </p>
+                    </div>
+                    <div class="p-6">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg overflow-hidden">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Version ID</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="versionsBody" class="bg-white divide-y divide-gray-200">
+                                    <!-- Version entries will be inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Transaction Statistics Card -->
+            <div class="bg-white rounded-2xl shadow-xl p-8 border border-blue-100 mb-8">
+                <div class="flex items-center mb-6">
+                    <div class="bg-blue-100 p-3 rounded-lg mr-4">
+                        <i class="fas fa-chart-pie text-2xl text-blue-600"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">Transaction Statistics</h2>
+                        <p class="text-gray-500">Key metrics from the MVCC simulation</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                    <div class="bg-blue-50 p-6 rounded-lg border border-blue-100 text-center zoom-on-hover">
+                        <div class="text-4xl font-bold text-blue-600 mb-2" id="totalTransactions">0</div>
+                        <div class="text-sm text-blue-800 uppercase font-medium">Total Transactions</div>
+                    </div>
+                    
+                    <div class="bg-green-50 p-6 rounded-lg border border-green-100 text-center zoom-on-hover">
+                        <div class="text-4xl font-bold text-green-600 mb-2" id="totalVersions">0</div>
+                        <div class="text-sm text-green-800 uppercase font-medium">Data Versions Created</div>
+                    </div>
+                    
+                    <div class="bg-yellow-50 p-6 rounded-lg border border-yellow-100 text-center zoom-on-hover">
+                        <div class="text-4xl font-bold text-yellow-600 mb-2" id="readOperations">0</div>
+                        <div class="text-sm text-yellow-800 uppercase font-medium">Read Operations</div>
+                    </div>
+                    
+                    <div class="bg-purple-50 p-6 rounded-lg border border-purple-100 text-center zoom-on-hover">
+                        <div class="text-4xl font-bold text-purple-600 mb-2" id="writeOperations">0</div>
+                        <div class="text-sm text-purple-800 uppercase font-medium">Write Operations</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MVCC Explainer Modal -->
+    <div id="explainerModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-xl shadow-2xl max-w-4xl mx-4 w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-2xl font-bold text-gray-900">How MVCC Works</h3>
+                    <button id="closeExplainer" class="text-gray-400 hover:text-gray-500">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6">
+                <div class="prose max-w-none">
+                    <p>Multi-Version Concurrency Control (MVCC) is a sophisticated technique used by modern database systems to handle concurrent access while maintaining transaction isolation.</p>
+                    
+                    <h4 class="text-lg font-semibold text-blue-700 mt-4">Core Concepts</h4>
+                    
+                    <ul class="list-disc pl-5 space-y-2">
+                        <li><strong>Versions</strong>: Instead of overwriting data when it's modified, MVCC creates a new version of the data item, preserving the old versions.</li>
+                        <li><strong>Timestamps</strong>: Each transaction is assigned a timestamp when it starts, which is used to determine which versions of data it should see.</li>
+                        <li><strong>Read Operations</strong>: When a transaction reads data, it sees the most recent version created by a transaction that committed before the reading transaction started.</li>
+                        <li><strong>Write Operations</strong>: When a transaction writes data, it creates a new version with the transaction's timestamp.</li>
+                    </ul>
+                    
+                    <h4 class="text-lg font-semibold text-blue-700 mt-4">Benefits of MVCC</h4>
+                    
+                    <ul class="list-disc pl-5 space-y-2">
+                        <li><strong>Increased Concurrency</strong>: Readers don't block writers and writers don't block readers, allowing for higher throughput.</li>
+                        <li><strong>Consistent Reads</strong>: Each transaction sees a consistent snapshot of the database as it existed at the start of the transaction.</li>
+                        <li><strong>No Read Locks</strong>: Read operations don't require locks, reducing lock contention.</li>
+                        <li><strong>Support for Time Travel</strong>: Historical data is preserved, allowing queries against past states of the database.</li>
+                    </ul>
+                    
+                    <h4 class="text-lg font-semibold text-blue-700 mt-4">How Transactions See Data</h4>
+                    
+                    <p>When a transaction reads data in an MVCC system:</p>
+                    
+                    <ol class="list-decimal pl-5 space-y-2">
+                        <li>It uses its start timestamp (Ts) to determine visibility</li>
+                        <li>It can see data versions created by transactions that committed before Ts</li>
+                        <li>It cannot see data versions created by transactions that committed after Ts</li>
+                        <li>It cannot see data versions created by transactions that were active (uncommitted) at Ts</li>
+                    </ol>
+                    
+                    <h4 class="text-lg font-semibold text-blue-700 mt-4">Garbage Collection</h4>
+                    
+                    <p>Since MVCC creates multiple versions of data, a garbage collection process is needed to remove old versions that are no longer needed. This typically happens when:</p>
+                    
+                    <ul class="list-disc pl-5 space-y-2">
+                        <li>A version is older than the oldest active transaction (no transaction will ever need to see it)</li>
+                        <li>A newer version of the same data exists and all active transactions can see the newer version</li>
+                    </ul>
+                    
+                    <h4 class="text-lg font-semibold text-blue-700 mt-4">Implementation in Popular Databases</h4>
+                    
+                    <ul class="list-disc pl-5 space-y-2">
+                        <li><strong>PostgreSQL</strong>: Uses MVCC with tuple-level versioning, where each row has transaction IDs to track visibility</li>
+                        <li><strong>MySQL (InnoDB)</strong>: Uses MVCC with undo logs to track previous versions of rows</li>
+                        <li><strong>Oracle</strong>: Uses a variation of MVCC with rollback segments to maintain old versions</li>
+                        <li><strong>SQL Server</strong>: Implements snapshot isolation using row versioning in tempdb</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
+                <button id="closeExplainerBtn" class="px-4 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 transition">
+                    Got it
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Modal handling
+        const explainerBtn = document.getElementById('explainerBtn');
+        const explainerModal = document.getElementById('explainerModal');
+        const closeExplainer = document.getElementById('closeExplainer');
+        const closeExplainerBtn = document.getElementById('closeExplainerBtn');
+        
+        explainerBtn.addEventListener('click', () => {
+            explainerModal.classList.remove('hidden');
+        });
+        
+        closeExplainer.addEventListener('click', () => {
+            explainerModal.classList.add('hidden');
+        });
+        
+        closeExplainerBtn.addEventListener('click', () => {
+            explainerModal.classList.add('hidden');
+        });
+        
+        explainerModal.addEventListener('click', (e) => {
+            if (e.target === explainerModal) {
+                explainerModal.classList.add('hidden');
+            }
+        });
+        
+        // Run simulation
+        document.getElementById('runSimulation').addEventListener('click', async function() {
+            const button = this;
+            // Disable button to prevent multiple clicks
+            button.disabled = true;
+            button.classList.add('opacity-70', 'cursor-not-allowed');
+            
+            // Show loading indicator and progress animation
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('results').classList.add('hidden');
+            
+            // Animate progress bar
+            const progressBar = document.getElementById('progressBar');
+            let progress = 0;
+            
+            const progressInterval = setInterval(() => {
+                progress += 3;
+                if (progress > 95) {
+                    // Cap at 95% until we get response
+                    progress = 95;
+                }
+                progressBar.style.width = `${progress}%`;
+            }, 150);
+            
+            // Set timeout for request
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Request timed out')), 20000); // 20 second timeout
+            });
+            
+            try {
+                // Race the fetch against a timeout
+                const response = await Promise.race([
+                    fetch('/api/run-mvcc'),
+                    timeoutPromise
+                ]);
+                
+                // Handle HTTP error status
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    if (response.status === 429) {
+                        // Rate limit error - show retry after cooldown
+                        throw new Error(`Too many requests. ${errorData.error}`);
+                    } else {
+                        throw new Error(`Server error: ${errorData.error || response.statusText}`);
+                    }
+                }
+                
+                const data = await response.json();
+                
+                // Check if there's an error from the server
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Clear the interval and set progress to 100%
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+                
+                // Short delay to show completed progress
+                setTimeout(() => {
+                    // Hide loading and show results
+                    document.getElementById('loading').classList.add('hidden');
+                    document.getElementById('results').classList.remove('hidden');
+                    
+                    // Update explanation
+                    document.getElementById('explanationText').textContent = data.explanation;
+                    
+                    // Update initial and final states
+                    const timeline = data.timeline;
+                    const initialState = timeline.find(entry => entry.action === "Initial state");
+                    const finalState = timeline.find(entry => entry.action === "Final state");
+                    
+                    if (initialState && finalState) {
+                        document.getElementById('initialState').innerHTML = createAccountTable(initialState.data);
+                        document.getElementById('finalState').innerHTML = createAccountTable(finalState.data);
+                    } else {
+                        console.error("Initial or final state missing from timeline");
+                    }
+                    
+                    // Create timeline visualization
+                    createTimelineVisualization(timeline);
+                    
+                    // Update timeline table
+                    const timelineBody = document.getElementById('timelineBody');
+                    timelineBody.innerHTML = '';
+                    
+                    // Count read and write operations
+                    let readOps = 0;
+                    let writeOps = 0;
+                    
+                    // Get unique transaction IDs for statistics
+                    const transactionIds = new Set();
+                    
+                    timeline.forEach(entry => {
+                        if (entry.action !== "Initial state" && entry.action !== "Final state") {
+                            const row = document.createElement('tr');
+                            
+                            // Format timestamp
+                            const timestamp = new Date(entry.time);
+                            const formattedTime = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+                            
+                            // Track statistics
+                            if (entry.action.includes('reads')) {
+                                readOps++;
+                            } else if (entry.action.includes('writes') || entry.action.includes('updates')) {
+                                writeOps++;
+                            }
+                            
+                            // Track transaction IDs
+                            if (entry.data && entry.data.txn_id) {
+                                transactionIds.add(entry.data.txn_id);
+                            }
+                            
+                            // Create details text
+                            let details = '';
+                            if (entry.data) {
+                                details = JSON.stringify(entry.data, null, 2);
+                            }
+                            
+                            // Style the row based on operation type
+                            let actionClass = '';
+                            if (entry.action.includes('starts')) {
+                                actionClass = 'bg-blue-50';
+                            } else if (entry.action.includes('commits')) {
+                                actionClass = 'bg-green-50';
+                            } else if (entry.action.includes('reads')) {
+                                actionClass = 'bg-yellow-50';
+                            } else if (entry.action.includes('writes') || entry.action.includes('updates')) {
+                                actionClass = 'bg-purple-50';
+                            }
+                            
+                            row.className = actionClass;
+                            
+                            row.innerHTML = `
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${formattedTime}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-800 font-medium">${entry.action}</td>
+                                <td class="px-4 py-3 text-sm text-gray-500"><pre class="text-xs bg-gray-50 p-2 rounded overflow-x-auto">${details}</pre></td>
+                            `;
+                            
+                            timelineBody.appendChild(row);
+                        }
+                    });
+                    
+                    // Update versions table
+                    const versionsBody = document.getElementById('versionsBody');
+                    versionsBody.innerHTML = '';
+                    
+                    if (data.versions && Array.isArray(data.versions)) {
+                        data.versions.forEach((version, index) => {
+                            const row = document.createElement('tr');
+                            row.className = 'version-row';
+                            
+                            // Apply a slight delay to each row for a staggered animation
+                            row.style.animationDelay = `${index * 50}ms`;
+                            
+                            // Style versions based on transaction
+                            const bgClass = `bg-blue-${(version.txn_id % 9) * 100 + 50}`;
+                            
+                            row.innerHTML = `
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${version.version_id}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-800">${version.account_name}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-800">${version.balance.toFixed(2)}</td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        T${version.txn_id}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${new Date(version.timestamp).toLocaleTimeString()}</td>
+                            `;
+                            
+                            versionsBody.appendChild(row);
+                        });
+                    }
+                    
+                    // Update statistics
+                    document.getElementById('totalTransactions').textContent = transactionIds.size;
+                    document.getElementById('totalVersions').textContent = data.versions ? data.versions.length : 0;
+                    document.getElementById('readOperations').textContent = readOps;
+                    document.getElementById('writeOperations').textContent = writeOps;
+                    
+                }, 500);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                clearInterval(progressInterval);
+                
+                // Determine error type and provide appropriate message
+                let errorMessage = 'An error occurred while running the simulation.';
+                let retryDelay = 2; // Default retry delay in seconds
+                
+                if (error.message.includes('timeout')) {
+                    errorMessage = 'The server took too long to respond. Please try again.';
+                } else if (error.message.includes('Too many requests')) {
+                    errorMessage = error.message;
+                    retryDelay = 3; // Wait a bit longer for rate limit errors
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorMessage = 'Could not connect to the server. Please check your connection and try again.';
+                } else if (error.message.includes('Server error')) {
+                    errorMessage = error.message;
+                }
+                
+                // Show error message with auto-retry countdown
+                document.getElementById('loading').innerHTML = `
+                    <div class="bg-white rounded-2xl shadow-xl border border-red-100 p-8 text-center mb-8">
+                        <div class="flex flex-col items-center">
+                            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                                <i class="fas fa-exclamation-triangle text-xl text-red-600"></i>
+                            </div>
+                            <p class="text-lg font-medium text-red-700 mb-2">Simulation Error</p>
+                            <p class="text-gray-500 mb-6">${errorMessage}</p>
+                            <div>
+                                <button id="retryButton" class="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition">
+                                    <i class="fas fa-redo mr-2"></i> Try Again <span id="countdownDisplay"></span>
+                                </button>
+                                <div class="mt-3 text-sm text-gray-400">
+                                    Auto-retry in <span id="countdown">${retryDelay}</span> seconds...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Set up auto-retry countdown
+                let countdownValue = retryDelay;
+                const countdownElement = document.getElementById('countdown');
+                
+                const countdownInterval = setInterval(() => {
+                    countdownValue--;
+                    if (countdownElement) {
+                        countdownElement.textContent = countdownValue;
+                    }
+                    
+                    if (countdownValue <= 0) {
+                        clearInterval(countdownInterval);
+                        document.getElementById('loading').classList.add('hidden');
+                        button.disabled = false;
+                        button.classList.remove('opacity-70', 'cursor-not-allowed');
+                        button.click(); // Auto-retry
+                    }
+                }, 1000);
+                
+                // Add manual retry button handler
+                document.getElementById('retryButton').addEventListener('click', () => {
+                    clearInterval(countdownInterval);
+                    document.getElementById('loading').classList.add('hidden');
+                    button.disabled = false;
+                    button.classList.remove('opacity-70', 'cursor-not-allowed');
+                    setTimeout(() => button.click(), 100); // Small delay to ensure UI updates
+                });
+            } finally {
+                // We don't re-enable the button here since we handle that in the error case or after successful completion
+            }
+        });
+        
+        function createAccountTable(accounts) {
+            let html = `
+                <table class="min-w-full divide-y divide-gray-200 bg-white rounded overflow-hidden">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Account</th>
+                            <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+            `;
+            
+            accounts.forEach(account => {
+                html += `
+                    <tr>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-800 font-medium">${account.name}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-800">
+                            <span class="font-medium">${account.balance.toFixed(2)}</span>
+                            <span class="text-gray-400">USD</span>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            
+            return html;
+        }
+        
+        function createTimelineVisualization(timeline) {
+            const container = document.getElementById('timelineVisualization');
+            container.innerHTML = '';
+            
+            // Filter out initial and final states
+            const events = timeline.filter(entry => 
+                entry.action !== "Initial state" && 
+                entry.action !== "Final state"
+            );
+            
+            if (events.length === 0) return;
+            
+            // Create a map to track transactions
+            const transactions = new Map();
+            
+            // First pass to identify all transactions
+            events.forEach(event => {
+                if (event.data && event.data.txn_id) {
+                    const txnId = event.data.txn_id;
+                    if (!transactions.has(txnId)) {
+                        transactions.set(txnId, {
+                            id: txnId,
+                            events: [],
+                            startTime: null,
+                            endTime: null
+                        });
+                    }
+                    
+                    const txn = transactions.get(txnId);
+                    txn.events.push(event);
+                    
+                    const time = new Date(event.time).getTime();
+                    
+                    if (txn.startTime === null || time < txn.startTime) {
+                        txn.startTime = time;
+                    }
+                    
+                    if (txn.endTime === null || time > txn.endTime) {
+                        txn.endTime = time;
+                    }
+                }
+            });
+            
+            // Calculate timeline range
+            const timelineStart = Math.min(...Array.from(transactions.values()).map(t => t.startTime));
+            const timelineEnd = Math.max(...Array.from(transactions.values()).map(t => t.endTime));
+            const timelineDuration = timelineEnd - timelineStart;
+            
+            // Create a row for each transaction
+            const timelineWidth = container.clientWidth;
+            const rowHeight = 60;
+            let currentY = 20;
+            
+            // Create and position events on the timeline
+            Array.from(transactions.values()).forEach((txn, index) => {
+                // Create transaction label
+                const txnLabel = document.createElement('div');
+                txnLabel.className = 'absolute -mt-4 font-medium text-blue-800 text-sm';
+                txnLabel.style.left = '0px';
+                txnLabel.style.top = `${currentY - 20}px`;
+                txnLabel.textContent = `T${txn.id}`;
+                container.appendChild(txnLabel);
+                
+                // Create timeline for this transaction
+                txn.events.forEach(event => {
+                    const eventTime = new Date(event.time).getTime();
+                    const position = ((eventTime - timelineStart) / timelineDuration) * (timelineWidth - 50);
+                    
+                    // Create event marker
+                    const eventDiv = document.createElement('div');
+                    eventDiv.className = 'timeline-event absolute';
+                    
+                    // Determine event type and style
+                    let bgClass, iconClass, tooltip;
+                    
+                    if (event.action.includes('starts')) {
+                        bgClass = 'bg-blue-500';
+                        iconClass = 'fas fa-play';
+                        tooltip = 'Transaction Started';
+                    } else if (event.action.includes('commits')) {
+                        bgClass = 'bg-green-500';
+                        iconClass = 'fas fa-check';
+                        tooltip = 'Transaction Committed';
+                    } else if (event.action.includes('reads')) {
+                        bgClass = 'bg-yellow-500';
+                        iconClass = 'fas fa-eye';
+                        tooltip = 'Read Operation';
+                    } else if (event.action.includes('writes') || event.action.includes('updates')) {
+                        bgClass = 'bg-purple-500';
+                        iconClass = 'fas fa-edit';
+                        tooltip = 'Write Operation';
+                    } else {
+                        bgClass = 'bg-gray-500';
+                        iconClass = 'fas fa-circle';
+                        tooltip = 'Event';
+                    }
+                    
+                    eventDiv.innerHTML = `
+                        <div class="flex items-center justify-center w-10 h-10 rounded-full ${bgClass} text-white shadow-md cursor-pointer"
+                             title="${tooltip}: ${event.action}">
+                            <i class="${iconClass}"></i>
+                        </div>
+                        <div class="absolute top-full mt-1 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 transition-opacity duration-200 pointer-events-none"
+                             style="min-width: 120px; text-align: center; white-space: nowrap;">
+                            ${event.action}
+                        </div>
+                    `;
+                    
+                    eventDiv.style.left = `${position}px`;
+                    eventDiv.style.top = `${currentY}px`;
+                    
+                    eventDiv.querySelector('div').addEventListener('mouseenter', function() {
+                        this.nextElementSibling.classList.add('opacity-100');
+                    });
+                    
+                    eventDiv.querySelector('div').addEventListener('mouseleave', function() {
+                        this.nextElementSibling.classList.remove('opacity-100');
+                    });
+                    
+                    container.appendChild(eventDiv);
+                });
+                
+                // Move to next row
+                currentY += rowHeight;
+            });
+            
+            // Set container height
+            container.style.height = `${currentY + 20}px`;
+            
+            // Add time indicators
+            const timeIndicators = 5;
+            for (let i = 0; i <= timeIndicators; i++) {
+                const indicatorTime = timelineStart + (timelineDuration * (i / timeIndicators));
+                const position = ((i / timeIndicators) * (timelineWidth - 50));
+                
+                const indicator = document.createElement('div');
+                indicator.className = 'absolute -bottom-6 transform -translate-x-1/2 text-xs text-gray-500';
+                indicator.style.left = `${position}px`;
+                indicator.textContent = new Date(indicatorTime).toLocaleTimeString([], { minute: '2-digit', second: '2-digit' });
+                
+                const tick = document.createElement('div');
+                tick.className = 'absolute bottom-0 w-px h-2 bg-gray-300 transform -translate-x-1/2';
+                tick.style.left = `${position}px`;
+                
+                container.appendChild(indicator);
+                container.appendChild(tick);
+            }
+        }
+    </script>
+</body>
+</html>

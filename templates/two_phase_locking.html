@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2PL Benchmark Simulation | DB Engine Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f3f4f6;
+        }
+        
+        .gradient-bg-green {
+            background: linear-gradient(120deg, #065f46, #10b981);
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+        
+        .shimmer {
+            background: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.2) 25%,
+                rgba(255, 255, 255, 0.2) 50%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        
+        .step-card {
+            transition: all 0.3s ease;
+        }
+        
+        .step-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .timeline-event {
+            transition: all 0.2s ease;
+        }
+        
+        .timeline-event:hover {
+            transform: scale(1.02);
+        }
+        
+        .table-shadow {
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .zoom-on-hover {
+            transition: transform 0.2s ease-in-out;
+        }
+        
+        .zoom-on-hover:hover {
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header -->
+    <div class="gradient-bg-green py-8 px-4 sm:px-6 lg:px-8 text-white">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold mb-2">Two-Phase Locking Benchmarking</h1>
+                    <p class="text-green-100">Comparing 2PL and MVCC Concurrency Control Approaches</p>
+                </div>
+                <a href="/" class="mt-4 md:mt-0 inline-flex items-center bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg px-4 py-2 text-white transition duration-300">
+                    <i class="fas fa-home mr-2"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8">
+        <div class="bg-white rounded-2xl shadow-xl p-8 border border-green-100 mb-8">
+            <div class="flex items-center mb-6">
+                <div class="bg-green-100 p-3 rounded-lg mr-4">
+                    <i class="fas fa-lock text-2xl text-green-600"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">About Two-Phase Locking</h2>
+                    <p class="text-gray-500">A Concurrency Control Protocol in Database Systems</p>
+                </div>
+            </div>
+            
+            <div class="prose max-w-none text-gray-600">
+                <p class="mb-4">
+                    Two-Phase Locking (2PL) is a concurrency control protocol that ensures serializability by dividing
+                    transaction execution into two distinct phases:
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
+                    <div class="bg-green-50 p-5 rounded-lg border border-green-200 step-card">
+                        <div class="flex items-center mb-3">
+                            <div class="flex-shrink-0 h-10 w-10 rounded-full bg-green-200 flex items-center justify-center mr-3">
+                                <span class="text-green-700 font-bold">1</span>
+                            </div>
+                            <h3 class="font-medium text-green-800 text-lg">Growing Phase</h3>
+                        </div>
+                        <p class="text-gray-700">
+                            Transactions can only <span class="font-medium text-green-700">acquire locks</span>, never release any locks.
+                            This ensures all needed resources are secured before modifications.
+                        </p>
+                    </div>
+                    
+                    <div class="bg-green-50 p-5 rounded-lg border border-green-200 step-card">
+                        <div class="flex items-center mb-3">
+                            <div class="flex-shrink-0 h-10 w-10 rounded-full bg-green-200 flex items-center justify-center mr-3">
+                                <span class="text-green-700 font-bold">2</span>
+                            </div>
+                            <h3 class="font-medium text-green-800 text-lg">Shrinking Phase</h3>
+                        </div>
+                        <p class="text-gray-700">
+                            Transactions can only <span class="font-medium text-green-700">release locks</span>, never acquire any new locks.
+                            This prevents cascading aborts and deadlock situations.
+                        </p>
+                    </div>
+                </div>
+                
+                <p class="mb-4">
+                    In this simulation, we'll compare the Two-Phase Locking approach with Multi-Version Concurrency Control (MVCC)
+                    to understand their performance characteristics, trade-offs, and behavior under different workloads.
+                </p>
+                
+                <ul class="list-disc pl-5 mb-6 space-y-2">
+                    <li><span class="font-medium text-green-700">Lock-Based Concurrency</span> - 2PL uses locks to control access to data items</li>
+                    <li><span class="font-medium text-green-700">Serializability</span> - Ensures transactions appear to execute in a serial order</li>
+                    <li><span class="font-medium text-green-700">Deadlock Potential</span> - May encounter deadlocks that require detection and resolution</li>
+                    <li><span class="font-medium text-green-700">Conservative Approach</span> - Prevents conflicts by blocking potentially conflicting operations</li>
+                </ul>
+            </div>
+            
+            <div class="flex flex-wrap gap-4 mt-6">
+                <button id="runSimulation" class="pulse-animation flex items-center px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition duration-300 shadow-md">
+                    <i class="fas fa-play-circle mr-2"></i> Run 2PL vs MVCC Benchmark
+                </button>
+            </div>
+        </div>
+        
+        <!-- Loading Indicator -->
+        <div id="loading" class="hidden">
+            <div class="bg-white rounded-2xl shadow-xl border border-green-100 p-8 text-center mb-8">
+                <div class="flex flex-col items-center">
+                    <div class="w-16 h-16 border-4 border-green-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p class="text-lg font-medium text-green-700">Running Benchmarking Simulation...</p>
+                    <p class="text-gray-500 mt-2">Comparing 2PL and MVCC protocols</p>
+                </div>
+                
+                <div class="mt-8 max-w-md mx-auto">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-sm text-gray-500">Processing Transactions</span>
+                        <span class="text-sm text-green-600 shimmer rounded px-2">In progress</span>
+                    </div>
+                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div id="progressBar" class="h-full bg-green-600 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Results Container -->
+        <div id="results" class="hidden fade-in">
+            <!-- Summary Card -->
+            <div class="bg-white rounded-2xl shadow-xl p-8 border border-green-100 mb-8">
+                <div class="flex items-center mb-6">
+                    <div class="bg-green-100 p-3 rounded-lg mr-4">
+                        <i class="fas fa-check-circle text-2xl text-green-600"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">Benchmark Complete</h2>
+                        <p id="explanationText" class="text-gray-600"></p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+                    <div class="bg-green-50 p-6 rounded-lg border border-green-200 zoom-on-hover">
+                        <h3 class="text-lg font-semibold text-green-800 mb-4 flex items-center">
+                            <i class="fas fa-lock text-green-600 mr-2"></i>
+                            2PL Performance Metrics
+                        </h3>
+                        <ul class="space-y-3" id="twoPLMetrics">
+                            <!-- 2PL metrics will be listed here -->
+                        </ul>
+                    </div>
+                    
+                    <div class="bg-blue-50 p-6 rounded-lg border border-blue-200 zoom-on-hover">
+                        <h3 class="text-lg font-semibold text-blue-800 mb-4 flex items-center">
+                            <i class="fas fa-layer-group text-blue-600 mr-2"></i>
+                            MVCC Performance Metrics
+                        </h3>
+                        <ul class="space-y-3" id="mvccMetrics">
+                            <!-- MVCC metrics will be listed here -->
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Comparison Chart -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+                        <i class="fas fa-chart-bar text-green-600 mr-2"></i>
+                        Performance Comparison Chart
+                    </h3>
+                    <div id="chartContainer" class="bg-white p-4 border border-gray-200 rounded-lg shadow-sm">
+                        <img id="chartImage" class="max-w-full h-auto mx-auto" alt="2PL vs MVCC Comparison" />
+                    </div>
+                </div>
+                
+                <!-- Analysis Points -->
+                <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+                        <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>
+                        Analysis & Insights
+                    </h3>
+                    <ul class="space-y-3 text-gray-700" id="analysisPoints">
+                        <!-- Analysis points will be listed here -->
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Timeline Visualization -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-green-100">
+                    <div class="border-b border-gray-200 bg-gray-50 px-6 py-4">
+                        <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-history text-green-600 mr-2"></i>
+                            2PL Transaction Timeline
+                        </h3>
+                        <p class="text-sm text-gray-500 mt-1">
+                            Chronological operations with lock acquisition and release
+                        </p>
+                    </div>
+                    <div class="p-6">
+                        <div class="overflow-y-auto max-h-96 space-y-3" id="twoPLTimeline">
+                            <!-- 2PL timeline entries will be listed here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-blue-100">
+                    <div class="border-b border-gray-200 bg-gray-50 px-6 py-4">
+                        <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-code-branch text-blue-600 mr-2"></i>
+                            MVCC Transaction Timeline
+                        </h3>
+                        <p class="text-sm text-gray-500 mt-1">
+                            Operations with version creation and visibility
+                        </p>
+                    </div>
+                    <div class="p-6">
+                        <div class="overflow-y-auto max-h-96 space-y-3" id="mvccTimeline">
+                            <!-- MVCC timeline entries will be listed here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Transaction Statistics Card -->
+            <div class="bg-white rounded-2xl shadow-xl p-8 border border-green-100 mb-8">
+                <div class="flex items-center mb-6">
+                    <div class="bg-green-100 p-3 rounded-lg mr-4">
+                        <i class="fas fa-chart-pie text-2xl text-green-600"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">Protocol Comparison</h2>
+                        <p class="text-gray-500">Key differences between 2PL and MVCC approaches</p>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 table-shadow">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Feature</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Two-Phase Locking</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Multi-Version Concurrency Control</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Concurrency Approach</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Lock-based prevention</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Version-based isolation</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Read Operations</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Acquire read locks</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">No locks, read appropriate version</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Write Operations</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Exclusive write locks</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Create new versions</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Deadlock Potential</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Yes, requires detection</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Mostly avoided</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Storage Requirements</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Lower</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Higher (multiple versions)</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Read-Heavy Workloads</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Less optimal (read locks)</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Very efficient</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('runSimulation').addEventListener('click', async function() {
+            // Show loading indicator and progress animation
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('results').classList.add('hidden');
+            
+            // Animate progress bar
+            const progressBar = document.getElementById('progressBar');
+            let progress = 0;
+            
+            const progressInterval = setInterval(() => {
+                progress += 5;
+                if (progress > 100) {
+                    clearInterval(progressInterval);
+                } else {
+                    progressBar.style.width = `${progress}%`;
+                }
+            }, 150);
+            
+            try {
+                // Call the API to run the simulation
+                const response = await fetch('/api/run-2pl');
+                const data = await response.json();
+                
+                // Clear the interval and set progress to 100%
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+                
+                // Short delay to show completed progress
+                setTimeout(() => {
+                    // Hide loading and show results
+                    document.getElementById('loading').classList.add('hidden');
+                    document.getElementById('results').classList.remove('hidden');
+                    
+                    // Update explanation
+                    document.getElementById('explanationText').textContent = data.explanation;
+                    
+                    // Update 2PL metrics with icons
+                    const twoPLMetrics = document.getElementById('twoPLMetrics');
+                    twoPLMetrics.innerHTML = `
+                        <li class="flex items-center">
+                            <span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-green-200 mr-3">
+                                <i class="fas fa-clock text-green-700"></i>
+                            </span>
+                            <span><span class="font-medium">Duration:</span> ${data.benchmarks["2pl"].duration.toFixed(3)} seconds</span>
+                        </li>
+                        <li class="flex items-center">
+                            <span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-yellow-200 mr-3">
+                                <i class="fas fa-exclamation-triangle text-yellow-700"></i>
+                            </span>
+                            <span><span class="font-medium">Conflicts:</span> ${data.benchmarks["2pl"].conflicts}</span>
+                        </li>
+                        <li class="flex items-center">
+                            <span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-red-200 mr-3">
+                                <i class="fas fa-times text-red-700"></i>
+                            </span>
+                            <span><span class="font-medium">Aborts:</span> ${data.benchmarks["2pl"].aborts}</span>
+                        </li>
+                    `;
+                    
+                    // Update MVCC metrics with icons
+                    const mvccMetrics = document.getElementById('mvccMetrics');
+                    mvccMetrics.innerHTML = `
+                        <li class="flex items-center">
+                            <span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-blue-200 mr-3">
+                                <i class="fas fa-clock text-blue-700"></i>
+                            </span>
+                            <span><span class="font-medium">Duration:</span> ${data.benchmarks["mvcc"].duration.toFixed(3)} seconds</span>
+                        </li>
+                        <li class="flex items-center">
+                            <span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-yellow-200 mr-3">
+                                <i class="fas fa-exclamation-triangle text-yellow-700"></i>
+                            </span>
+                            <span><span class="font-medium">Conflicts:</span> ${data.benchmarks["mvcc"].conflicts}</span>
+                        </li>
+                        <li class="flex items-center">
+                            <span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-red-200 mr-3">
+                                <i class="fas fa-times text-red-700"></i>
+                            </span>
+                            <span><span class="font-medium">Aborts:</span> ${data.benchmarks["mvcc"].aborts}</span>
+                        </li>
+                    `;
+                    
+                    // Update comparison chart
+                    if (data.chart) {
+                        document.getElementById('chartImage').src = 'data:image/png;base64,' + data.chart;
+                    }
+                    
+                    // Update analysis points
+                    const analysisPoints = document.getElementById('analysisPoints');
+                    analysisPoints.innerHTML = '';
+                    
+                    data.comparison.analysis.forEach(point => {
+                        const li = document.createElement('li');
+                        li.className = 'flex items-start';
+                        li.innerHTML = `
+                            <span class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-green-100 text-green-800 mr-3 mt-0.5">
+                                <i class="fas fa-check text-xs"></i>
+                            </span>
+                            <span>${point}</span>
+                        `;
+                        analysisPoints.appendChild(li);
+                    });
+                    
+                    // Add comparative summary
+                    const summary = document.createElement('li');
+                    summary.className = 'flex items-start mt-4';
+                    
+                    const isMVCCFaster = data.comparison.speed.faster === "MVCC";
+                    const fasterColor = isMVCCFaster ? 'blue' : 'green';
+                    const fasterIcon = isMVCCFaster ? 'layer-group' : 'lock';
+                    
+                    summary.innerHTML = `
+                        <span class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-${fasterColor}-100 text-${fasterColor}-800 mr-3 mt-0.5">
+                            <i class="fas fa-${fasterIcon} text-xs"></i>
+                        </span>
+                        <span class="font-medium text-${fasterColor}-700">
+                            ${data.comparison.speed.faster} was ${data.comparison.speed.difference_pct.toFixed(1)}% faster in this simulation.
+                        </span>
+                    `;
+                    analysisPoints.appendChild(summary);
+                    
+                    // Update 2PL timeline with enhanced styling
+                    const twoPLTimeline = document.getElementById('twoPLTimeline');
+                    twoPLTimeline.innerHTML = '';
+                    
+                    data.benchmarks["2pl"].timeline.forEach((entry, index) => {
+                        // Add a slight delay for staggered animation
+                        const entryDiv = document.createElement('div');
+                        entryDiv.className = 'timeline-event';
+                        entryDiv.style.animationDelay = `${index * 50}ms`;
+                        
+                        const isCommit = entry.action.includes('committed');
+                        const isAbort = entry.action.includes('abort');
+                        const isConflict = entry.action.includes('conflict');
+                        const isStart = entry.action.includes('started');
+                        const isLock = entry.action.includes('lock');
+                        
+                        let bgColor = 'bg-gray-50';
+                        let borderColor = 'border-gray-200';
+                        let iconClass = 'fas fa-circle';
+                        let iconColor = 'text-gray-500';
+                        
+                        if (isCommit) {
+                            bgColor = 'bg-green-50';
+                            borderColor = 'border-green-200';
+                            iconClass = 'fas fa-check-circle';
+                            iconColor = 'text-green-600';
+                        } else if (isAbort) {
+                            bgColor = 'bg-red-50';
+                            borderColor = 'border-red-200';
+                            iconClass = 'fas fa-times-circle';
+                            iconColor = 'text-red-600';
+                        } else if (isConflict) {
+                            bgColor = 'bg-yellow-50';
+                            borderColor = 'border-yellow-200';
+                            iconClass = 'fas fa-exclamation-triangle';
+                            iconColor = 'text-yellow-600';
+                        } else if (isStart) {
+                            bgColor = 'bg-blue-50';
+                            borderColor = 'border-blue-200';
+                            iconClass = 'fas fa-play-circle';
+                            iconColor = 'text-blue-600';
+                        } else if (isLock) {
+                            bgColor = 'bg-purple-50';
+                            borderColor = 'border-purple-200';
+                            iconClass = entry.action.includes('Released') ? 'fas fa-unlock' : 'fas fa-lock';
+                            iconColor = 'text-purple-600';
+                        }
+                        
+                        entryDiv.className = `p-4 rounded-lg ${bgColor} border ${borderColor} shadow-sm mb-3`;
+                        
+                        // Format timestamp
+                        const timestamp = new Date(entry.time);
+                        const formattedTime = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+                        
+                        // Create details text with proper formatting
+                        let details = '';
+                        if (entry.data) {
+                            details = JSON.stringify(entry.data, null, 2);
+                        }
+                        
+                        entryDiv.innerHTML = `
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 mr-3">
+                                    <i class="${iconClass} ${iconColor} text-lg"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex justify-between mb-2">
+                                        <span class="font-medium text-gray-800">${entry.action}</span>
+                                        <span class="text-xs text-gray-500 ml-2">${formattedTime}</span>
+                                    </div>
+                                    ${details ? `<pre class="text-xs bg-white p-2 rounded border border-gray-200 overflow-x-auto mt-2">${details}</pre>` : ''}
+                                </div>
+                            </div>
+                        `;
+                        
+                        twoPLTimeline.appendChild(entryDiv);
+                    });
+                    
+                    // Update MVCC timeline with enhanced styling
+                    const mvccTimeline = document.getElementById('mvccTimeline');
+                    mvccTimeline.innerHTML = '';
+                    
+                    data.benchmarks["mvcc"].timeline.forEach((entry, index) => {
+                        // Add a slight delay for staggered animation
+                        const entryDiv = document.createElement('div');
+                        entryDiv.className = 'timeline-event';
+                        entryDiv.style.animationDelay = `${index * 50}ms`;
+                        
+                        const isCommit = entry.action.includes('committed');
+                        const isAbort = entry.action.includes('abort');
+                        const isConflict = entry.action.includes('conflict');
+                        const isStart = entry.action.includes('started');
+                        const isRead = entry.action.includes('Read');
+                        const isWrite = entry.action.includes('version') || entry.action.includes('write');
+                        
+                        let bgColor = 'bg-gray-50';
+                        let borderColor = 'border-gray-200';
+                        let iconClass = 'fas fa-circle';
+                        let iconColor = 'text-gray-500';
+                        
+                        if (isCommit) {
+                            bgColor = 'bg-green-50';
+                            borderColor = 'border-green-200';
+                            iconClass = 'fas fa-check-circle';
+                            iconColor = 'text-green-600';
+                        } else if (isAbort) {
+                            bgColor = 'bg-red-50';
+                            borderColor = 'border-red-200';
+                            iconClass = 'fas fa-times-circle';
+                            iconColor = 'text-red-600';
+                        } else if (isConflict) {
+                            bgColor = 'bg-yellow-50';
+                            borderColor = 'border-yellow-200';
+                            iconClass = 'fas fa-exclamation-triangle';
+                            iconColor = 'text-yellow-600';
+                        } else if (isStart) {
+                            bgColor = 'bg-blue-50';
+                            borderColor = 'border-blue-200';
+                            iconClass = 'fas fa-play-circle';
+                            iconColor = 'text-blue-600';
+                        } else if (isRead) {
+                            bgColor = 'bg-indigo-50';
+                            borderColor = 'border-indigo-200';
+                            iconClass = 'fas fa-eye';
+                            iconColor = 'text-indigo-600';
+                        } else if (isWrite) {
+                            bgColor = 'bg-purple-50';
+                            borderColor = 'border-purple-200';
+                            iconClass = 'fas fa-edit';
+                            iconColor = 'text-purple-600';
+                        }
+                        
+                        entryDiv.className = `p-4 rounded-lg ${bgColor} border ${borderColor} shadow-sm mb-3`;
+                        
+                        // Format timestamp
+                        const timestamp = new Date(entry.time);
+                        const formattedTime = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+                        
+                        // Create details text with proper formatting
+                        let details = '';
+                        if (entry.data) {
+                            details = JSON.stringify(entry.data, null, 2);
+                        }
+                        
+                        entryDiv.innerHTML = `
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 mr-3">
+                                    <i class="${iconClass} ${iconColor} text-lg"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex justify-between mb-2">
+                                        <span class="font-medium text-gray-800">${entry.action}</span>
+                                        <span class="text-xs text-gray-500 ml-2">${formattedTime}</span>
+                                    </div>
+                                    ${details ? `<pre class="text-xs bg-white p-2 rounded border border-gray-200 overflow-x-auto mt-2">${details}</pre>` : ''}
+                                </div>
+                            </div>
+                        `;
+                        
+                        mvccTimeline.appendChild(entryDiv);
+                    });
+                    
+                }, 500);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                clearInterval(progressInterval);
+                alert('An error occurred while running the simulation.');
+                document.getElementById('loading').classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

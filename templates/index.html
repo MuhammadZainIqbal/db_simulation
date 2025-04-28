@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DB Engine Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+        
+        .card-hover {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform: perspective(1000px) rotateY(0deg);
+        }
+        
+        .card-hover:hover {
+            transform: perspective(1000px) rotateY(3deg) translateY(-15px) scale(1.02);
+            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.25), 0 18px 36px -18px rgba(0, 0, 0, 0.3);
+            z-index: 1;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #4338ca, #3b82f6, #0ea5e9);
+            background-size: 200% 200%;
+            animation: gradientBG 15s ease infinite;
+        }
+        
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .btn-pulse {
+            animation: pulse 2s infinite;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-pulse:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: btnShine 3s infinite;
+        }
+        
+        @keyframes btnShine {
+            0% { left: -100%; }
+            20% { left: 100%; }
+            100% { left: 100%; }
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 15px rgba(59, 130, 246, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+            }
+        }
+        
+        .text-gradient {
+            background: linear-gradient(90deg, #4f46e5, #60a5fa, #34d399);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-size: 200% auto;
+            animation: textShine 5s linear infinite;
+        }
+        
+        @keyframes textShine {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+        
+        .float-animation {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(2deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+        }
+        
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            z-index: -1;
+            opacity: 0.4;
+            transition: all 0.8s ease;
+        }
+        
+        .glow {
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.7);
+        }
+        
+        .tech-chip {
+            transition: all 0.3s ease;
+            transform: translateZ(0);
+        }
+        
+        .tech-chip:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.3);
+        }
+        
+        .feature-icon {
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .card-hover:hover .feature-icon {
+            transform: scale(1.2) rotate(8deg);
+        }
+        
+        .nav-link {
+            position: relative;
+            padding-bottom: 5px;
+        }
+        
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: 0;
+            left: 0;
+            background-color: #3b82f6;
+            transition: width 0.3s ease;
+        }
+        
+        .nav-link:hover::after {
+            width: 100%;
+        }
+        
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: -1;
+        }
+        
+        .feature-card {
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            transform: translateZ(0);
+            transition: all 0.4s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .database-icon {
+            animation: database-pulse 4s ease-in-out infinite;
+        }
+        
+        @keyframes database-pulse {
+            0%, 100% { filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.6)); }
+            50% { filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.9)); }
+        }
+        
+        .scroll-down-icon {
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-15px); }
+            60% { transform: translateY(-5px); }
+        }
+        
+        .progress-bar {
+            height: 5px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+            z-index: 50;
+            transition: width 0.1s;
+        }
+        
+        .shimmer-text {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .shimmer-text:after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-900">
+    <!-- Progress bar -->
+    <div class="progress-bar" id="progress-bar"></div>
+    
+    <!-- Background elements -->
+    <div class="blob w-96 h-96 bg-indigo-500/40 top-0 left-20" id="blob1"></div>
+    <div class="blob w-80 h-80 bg-blue-500/40 bottom-20 right-10" id="blob2"></div>
+    <div class="blob w-72 h-72 bg-cyan-500/40 bottom-40 left-40" id="blob3"></div>
+    
+    <!-- 3D Background -->
+    <div id="canvas-container"></div>
+    
+    <!-- Navbar -->
+    <nav class="relative z-10 px-4 py-5 sm:px-6 lg:px-8 backdrop-blur-lg bg-slate-900/70">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <span class="text-3xl text-blue-500 database-icon"><i class="fas fa-database"></i></span>
+                <span class="text-2xl font-bold text-white">DB<span class="text-blue-500">Sim</span></span>
+            </div>
+            <div class="hidden md:flex space-x-8">
+                <a href="#features" class="nav-link text-gray-300 hover:text-white transition">Features</a>
+                <a href="#about" class="nav-link text-gray-300 hover:text-white transition">About</a>
+                <a href="https://github.com" target="_blank" class="nav-link text-gray-300 hover:text-white transition">GitHub</a>
+            </div>
+            <div>
+                <a href="#sims" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition shadow-lg hover:shadow-xl shadow-blue-500/20 group">
+                    Get Started
+                    <i class="fas fa-arrow-right ml-2 transition-transform group-hover:translate-x-1"></i>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="relative gradient-bg py-20 px-4 sm:px-6 lg:px-8 text-center overflow-hidden min-h-[80vh] flex items-center">
+        <div class="max-w-5xl mx-auto relative z-10">
+            <div class="mb-10 fade-in-element">
+                <span class="inline-block px-4 py-1 rounded-full text-sm font-semibold bg-white/10 text-blue-100 backdrop-blur-sm border border-white/20">
+                    <span class="inline-block animate-pulse mr-2 h-2 w-2 rounded-full bg-blue-400"></span>
+                    Educational Database Engine Simulator
+                </span>
+            </div>
+            
+            <h1 class="text-5xl md:text-7xl font-extrabold mb-6 tracking-tight glow text-white fade-in-element" data-delay="0.3">
+                <span class="block">Database Engine</span>
+                <span class="block text-gradient shimmer-text">Simulation Lab</span>
+            </h1>
+            
+            <p class="text-xl text-blue-100 max-w-3xl mx-auto mb-10 fade-in-element" data-delay="0.6">
+                Explore the internal workings of database concurrency control and transaction management through 
+                interactive visualizations and real-time simulations
+            </p>
+            
+            <div class="flex flex-wrap justify-center gap-4 mb-10 fade-in-element" data-delay="0.9">
+                <a href="#sims" class="btn-pulse bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl transition duration-300 shadow-lg shadow-blue-600/30 flex items-center transform hover:scale-105">
+                    <i class="fas fa-play-circle mr-2"></i>
+                    Launch Simulations
+                </a>
+                
+                <a href="#about" class="bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 text-white font-bold py-3 px-8 rounded-xl transition duration-300 transform hover:scale-105">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    Learn More
+                </a>
+            </div>
+            
+            <div class="flex flex-wrap justify-center gap-3 fade-in-element" data-delay="1.2">
+                <span class="tech-chip bg-white/5 text-sm px-4 py-2 rounded-full border border-white/10 backdrop-blur-sm">
+                    <i class="fab fa-python text-blue-400 mr-1"></i> Python
+                </span>
+                <span class="tech-chip bg-white/5 text-sm px-4 py-2 rounded-full border border-white/10 backdrop-blur-sm">
+                    <i class="fas fa-database text-green-400 mr-1"></i> SQLite
+                </span>
+                <span class="tech-chip bg-white/5 text-sm px-4 py-2 rounded-full border border-white/10 backdrop-blur-sm">
+                    <i class="fab fa-js text-yellow-400 mr-1"></i> JavaScript
+                </span>
+                <span class="tech-chip bg-white/5 text-sm px-4 py-2 rounded-full border border-white/10 backdrop-blur-sm">
+                    <i class="fab fa-html5 text-orange-400 mr-1"></i> HTML5
+                </span>
+                <span class="tech-chip bg-white/5 text-sm px-4 py-2 rounded-full border border-white/10 backdrop-blur-sm">
+                    <i class="fab fa-css3-alt text-blue-400 mr-1"></i> Tailwind CSS
+                </span>
+            </div>
+            
+            <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 text-white opacity-60 scroll-down-icon">
+                <a href="#sims" class="text-3xl">
+                    <i class="fas fa-chevron-down"></i>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Decorative elements -->
+        <div class="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-slate-900 to-transparent"></div>
+    </div>
+    
+    <!-- Simulations Cards Section -->
+    <div id="sims" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative">
+        <div class="text-center mb-16 fade-in-element">
+            <h2 class="text-4xl font-bold text-white mb-4">Choose Your <span class="text-blue-500">Simulation</span></h2>
+            <p class="text-xl text-gray-400 max-w-3xl mx-auto">
+                Dive into different database concurrency control mechanisms with our interactive simulations
+            </p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+            <!-- MVCC Card -->
+            <div class="card-hover relative bg-gradient-to-br from-indigo-900 to-indigo-800 rounded-2xl shadow-xl overflow-hidden border border-indigo-700/50 fade-in-element" data-delay="0.3">
+                <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                <div class="h-3 bg-indigo-600"></div>
+                <div class="p-8 relative z-10">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="bg-indigo-900/80 p-3 rounded-xl border border-indigo-700/50 shadow-lg feature-icon">
+                            <i class="fas fa-layer-group text-2xl text-indigo-400"></i>
+                        </div>
+                        <div class="bg-indigo-800/80 text-indigo-300 text-xs font-semibold px-3 py-1 rounded-full border border-indigo-700/50">
+                            Core Concept
+                        </div>
+                    </div>
+                    <h2 class="text-2xl font-bold text-white mb-4">MVCC Simulation</h2>
+                    <p class="text-indigo-200 mb-6">
+                        Explore how databases maintain multiple versions of data to enable concurrent transactions
+                        without locking, providing snapshot isolation and optimistic concurrency control.
+                    </p>
+                    <div class="space-y-3 mb-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-5 w-5 rounded-full bg-indigo-900 flex items-center justify-center">
+                                <i class="fas fa-check text-xs text-indigo-400"></i>
+                            </div>
+                            <span class="ml-2 text-indigo-200">Transaction Isolation</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-5 w-5 rounded-full bg-indigo-900 flex items-center justify-center">
+                                <i class="fas fa-check text-xs text-indigo-400"></i>
+                            </div>
+                            <span class="ml-2 text-indigo-200">Data Versioning</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-5 w-5 rounded-full bg-indigo-900 flex items-center justify-center">
+                                <i class="fas fa-check text-xs text-indigo-400"></i>
+                            </div>
+                            <span class="ml-2 text-indigo-200">Conflict Resolution</span>
+                        </div>
+                    </div>
+                    <a href="/mvcc" class="btn-pulse block w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-center transition duration-300 shadow-lg shadow-indigo-900/50 group">
+                        Launch Simulation
+                        <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Deadlock Card -->
+            <div class="card-hover relative bg-gradient-to-br from-red-900 to-red-800 rounded-2xl shadow-xl overflow-hidden border border-red-700/50 fade-in-element" data-delay="0.5">
+                <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                <div class="h-3 bg-red-600"></div>
+                <div class="p-8 relative z-10">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="bg-red-900/80 p-3 rounded-xl border border-red-700/50 shadow-lg feature-icon">
+                            <i class="fas fa-exclamation-triangle text-2xl text-red-400"></i>
+                        </div>
+                        <div class="bg-red-800/80 text-red-300 text-xs font-semibold px-3 py-1 rounded-full border border-red-700/50">
+                            Critical Issue
+                        </div>
+                    </div>
+                    <h2 class="text-2xl font-bold text-white mb-4">Deadlock Detection</h2>
+                    <p class="text-red-200 mb-6">
+                        Visualize how databases identify and resolve circular wait conditions where transactions
+                        are locked in a standstill, waiting for resources held by each other.
+                    </p>
+                    <div class="space-y-3 mb-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-5 w-5 rounded-full bg-red-900 flex items-center justify-center">
+                                <i class="fas fa-check text-xs text-red-400"></i>
+                            </div>
+                            <span class="ml-2 text-red-200">Wait-For Graph Analysis</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-5 w-5 rounded-full bg-red-900 flex items-center justify-center">
+                                <i class="fas fa-check text-xs text-red-400"></i>
+                            </div>
+                            <span class="ml-2 text-red-200">Cycle Detection</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-5 w-5 rounded-full bg-red-900 flex items-center justify-center">
+                                <i class="fas fa-check text-xs text-red-400"></i>
+                            </div>
+                            <span class="ml-2 text-red-200">Victim Selection</span>
+                        </div>
+                    </div>
+                    <a href="/deadlock" class="block w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium text-center transition duration-300 shadow-lg shadow-red-900/50 group">
+                        Launch Simulation
+                        <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- 2PL Card -->
+            <div class="card-hover relative bg-gradient-to-br from-green-900 to-green-800 rounded-2xl shadow-xl overflow-hidden border border-green-700/50 fade-in-element" data-delay="0.7">
+                <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                <div class="h-3 bg-green-600"></div>
+                <div class="p-8 relative z-10">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="bg-green-900/80 p-3 rounded-xl border border-green-700/50 shadow-lg feature-icon">
+                            <i class="fas fa-chart-line text-2xl text-green-400"></i>
+                        </div>
+                        <div class="bg-green-800/80 text-green-300 text-xs font-semibold px-3 py-1 rounded-full border border-green-700/50">
+                            Benchmark
+                        </div>
+                    </div>
+                    <h2 class="text-2xl font-bold text-white mb-4">2PL Benchmarking</h2>
+                    <p class="text-green-200 mb-6">
+                        Compare the performance and behavior of Two-Phase Locking with MVCC to understand
+                        the trade-offs between different concurrency control mechanisms.
+                    </p>
+                    <div class="space-y-3 mb-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-5 w-5 rounded-full bg-green-900 flex items-center justify-center">
+                                <i class="fas fa-check text-xs text-green-400"></i>
+                            </div>
+                            <span class="ml-2 text-green-200">Performance Comparison</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-5 w-5 rounded-full bg-green-900 flex items-center justify-center">
+                                <i class="fas fa-check text-xs text-green-400"></i>
+                            </div>
+                            <span class="ml-2 text-green-200">Growing & Shrinking Phases</span>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-5 w-5 rounded-full bg-green-900 flex items-center justify-center">
+                                <i class="fas fa-check text-xs text-green-400"></i>
+                            </div>
+                            <span class="ml-2 text-green-200">Lock Contention Analysis</span>
+                        </div>
+                    </div>
+                    <a href="/two-phase-locking" class="block w-full py-3 px-4 rounded-xl bg-green-600 hover:bg-green-700 text-white font-medium text-center transition duration-300 shadow-lg shadow-green-900/50 group">
+                        Launch Simulation
+                        <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature Highlights Section -->
+    <div id="features" class="bg-gradient-to-b from-slate-900 via-blue-900/20 to-slate-900 py-20 px-4 sm:px-6 lg:px-8 relative">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16 fade-in-element">
+                <span class="inline-block px-3 py-1 text-sm font-semibold bg-blue-900/30 text-blue-400 rounded-full mb-3">
+                    Powerful Features
+                </span>
+                <h2 class="text-4xl font-bold text-white mb-4">Why This <span class="text-blue-500">Simulator</span>?</h2>
+                <p class="text-xl text-gray-400 max-w-3xl mx-auto">
+                    Experience database concepts through interactive visualizations and real-time simulations
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="feature-card bg-slate-800/50 backdrop-blur-sm p-6 rounded-2xl border border-slate-700/50 hover:border-blue-500/30 transition-all duration-300 fade-in-element" data-delay="0.2">
+                    <div class="bg-gradient-to-br from-blue-600 to-blue-800 w-14 h-14 rounded-xl flex items-center justify-center mb-6 shadow-lg shadow-blue-900/40">
+                        <i class="fas fa-tachometer-alt text-2xl text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">Real-time Simulation</h3>
+                    <p class="text-gray-400">
+                        Experience how database transactions execute in real-time with dynamic visualizations of internal processes.
+                    </p>
+                </div>
+                
+                <div class="feature-card bg-slate-800/50 backdrop-blur-sm p-6 rounded-2xl border border-slate-700/50 hover:border-purple-500/30 transition-all duration-300 fade-in-element" data-delay="0.4">
+                    <div class="bg-gradient-to-br from-purple-600 to-purple-800 w-14 h-14 rounded-xl flex items-center justify-center mb-6 shadow-lg shadow-purple-900/40">
+                        <i class="fas fa-code-branch text-2xl text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">Version Tracking</h3>
+                    <p class="text-gray-400">
+                        Visualize how different versions of data are created, managed, and accessed in multi-version concurrency control.
+                    </p>
+                </div>
+                
+                <div class="feature-card bg-slate-800/50 backdrop-blur-sm p-6 rounded-2xl border border-slate-700/50 hover:border-red-500/30 transition-all duration-300 fade-in-element" data-delay="0.6">
+                    <div class="bg-gradient-to-br from-red-600 to-red-800 w-14 h-14 rounded-xl flex items-center justify-center mb-6 shadow-lg shadow-red-900/40">
+                        <i class="fas fa-exclamation-circle text-2xl text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">Conflict Detection</h3>
+                    <p class="text-gray-400">
+                        See how databases detect and resolve conflicts between concurrent transactions in different scenarios.
+                    </p>
+                </div>
+                
+                <div class="feature-card bg-slate-800/50 backdrop-blur-sm p-6 rounded-2xl border border-slate-700/50 hover:border-green-500/30 transition-all duration-300 fade-in-element" data-delay="0.8">
+                    <div class="bg-gradient-to-br from-green-600 to-green-800 w-14 h-14 rounded-xl flex items-center justify-center mb-6 shadow-lg shadow-green-900/40">
+                        <i class="fas fa-chart-bar text-2xl text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">Performance Metrics</h3>
+                    <p class="text-gray-400">
+                        Compare performance characteristics of different concurrency control mechanisms with detailed metrics.
+                    </p>
+                </div>
+                
+                <div class="feature-card bg-slate-800/50 backdrop-blur-sm p-6 rounded-2xl border border-slate-700/50 hover:border-yellow-500/30 transition-all duration-300 fade-in-element" data-delay="1.0">
+                    <div class="bg-gradient-to-br from-yellow-600 to-yellow-800 w-14 h-14 rounded-xl flex items-center justify-center mb-6 shadow-lg shadow-yellow-900/40">
+                        <i class="fas fa-lock text-2xl text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">Lock Management</h3>
+                    <p class="text-gray-400">
+                        Understand how database engines manage locks to control access to resources and prevent conflicts.
+                    </p>
+                </div>
+                
+                <div class="feature-card bg-slate-800/50 backdrop-blur-sm p-6 rounded-2xl border border-slate-700/50 hover:border-cyan-500/30 transition-all duration-300 fade-in-element" data-delay="1.2">
+                    <div class="bg-gradient-to-br from-cyan-600 to-cyan-800 w-14 h-14 rounded-xl flex items-center justify-center mb-6 shadow-lg shadow-cyan-900/40">
+                        <i class="fas fa-graduation-cap text-2xl text-white"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">Educational Insights</h3>
+                    <p class="text-gray-400">
+                        Learn complex database concepts through interactive exploration, explanations, and step-by-step processes.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Section -->
+    <div id="about" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div class="flex flex-col md:flex-row gap-10 items-center">
+            <div class="md:w-1/2 fade-in-element">
+                <span class="inline-block px-3 py-1 text-sm font-semibold bg-blue-900/30 text-blue-400 rounded-full mb-3">
+                    About This Project
+                </span>
+                <h2 class="text-4xl font-bold text-white mb-6">The <span class="text-blue-500">Technical</span> Side</h2>
+                <p class="text-gray-400 mb-6 text-lg">
+                    This interactive simulation demonstrates key database internals like Multi-Version Concurrency Control (MVCC),
+                    deadlock detection, and Two-Phase Locking (2PL). Built with Python, SQLite, and a responsive frontend, 
+                    it provides a visual learning experience for understanding complex database concepts.
+                </p>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                    <div class="bg-slate-800/70 p-4 rounded-xl border border-slate-700/70 flex items-start transform hover:scale-105 transition-transform">
+                        <div class="bg-blue-900/70 p-2 rounded-lg mr-3 flex-shrink-0">
+                            <i class="fas fa-code text-blue-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-blue-400">Python Backend</h3>
+                            <p class="text-sm text-gray-400">Simulates database operations with clean, modular code</p>
+                        </div>
+                    </div>
+                    <div class="bg-slate-800/70 p-4 rounded-xl border border-slate-700/70 flex items-start transform hover:scale-105 transition-transform">
+                        <div class="bg-blue-900/70 p-2 rounded-lg mr-3 flex-shrink-0">
+                            <i class="fas fa-database text-blue-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-blue-400">SQLite Storage</h3>
+                            <p class="text-sm text-gray-400">Local file-based database for persistence and querying</p>
+                        </div>
+                    </div>
+                    <div class="bg-slate-800/70 p-4 rounded-xl border border-slate-700/70 flex items-start transform hover:scale-105 transition-transform">
+                        <div class="bg-blue-900/70 p-2 rounded-lg mr-3 flex-shrink-0">
+                            <i class="fas fa-paint-brush text-blue-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-blue-400">Interactive UI</h3>
+                            <p class="text-sm text-gray-400">Responsive design with Tailwind CSS for a smooth experience</p>
+                        </div>
+                    </div>
+                    <div class="bg-slate-800/70 p-4 rounded-xl border border-slate-700/70 flex items-start transform hover:scale-105 transition-transform">
+                        <div class="bg-blue-900/70 p-2 rounded-lg mr-3 flex-shrink-0">
+                            <i class="fas fa-chart-line text-blue-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-blue-400">Data Visualization</h3>
+                            <p class="text-sm text-gray-400">Dynamic charts and graphs for performance analysis</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="md:w-1/2 float-animation fade-in-element" data-delay="0.4">
+                <div class="relative mx-auto max-w-md">
+                    <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl w-full h-full absolute -rotate-6 scale-105 opacity-30 blur-xl"></div>
+                    <div class="relative bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-xl backdrop-blur-sm">
+                        <div class="bg-slate-900 rounded-lg p-4 mb-4 font-mono text-sm text-gray-300 relative overflow-hidden code-block">
+                            <div class="absolute top-0 right-0 bg-blue-600 text-white px-2 py-1 text-xs">Transaction</div>
+                            <p class="mb-2 text-blue-400 code-line">BEGIN TRANSACTION;</p>
+                            <p class="mb-2 text-cyan-400 code-line">-- First read operation</p>
+                            <p class="mb-2 code-line">SELECT * FROM accounts WHERE id = 1;</p>
+                            <p class="mb-2 text-cyan-400 code-line">-- Update balance</p>
+                            <p class="mb-2 code-line">UPDATE accounts SET balance = balance - 100 WHERE id = 1;</p>
+                            <p class="mb-2 text-cyan-400 code-line">-- Read from another table</p>
+                            <p class="mb-2 code-line">SELECT * FROM transactions WHERE account_id = 1;</p>
+                            <p class="text-blue-400 code-line">COMMIT;</p>
+                        </div>
+                        
+                        <div class="flex space-x-3">
+                            <div class="flex-1 bg-slate-900 rounded-lg p-3 font-mono text-xs text-gray-300 transform hover:scale-105 transition-transform">
+                                <div class="text-pink-400 mb-1">/* MVCC */</div>
+                                <div>Each transaction sees a snapshot of the database as it existed when the transaction started.</div>
+                            </div>
+                            <div class="flex-1 bg-slate-900 rounded-lg p-3 font-mono text-xs text-gray-300 transform hover:scale-105 transition-transform">
+                                <div class="text-pink-400 mb-1">/* 2PL */</div>
+                                <div>Locks are only acquired in the growing phase and only released in the shrinking phase.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Call to Action Section -->
+    <div class="gradient-bg py-16 px-4 sm:px-6 lg:px-8 text-center relative overflow-hidden">
+        <div class="max-w-4xl mx-auto relative z-10 fade-in-element">
+            <h2 class="text-4xl font-bold text-white mb-6">Ready to Explore Database Internals?</h2>
+            <p class="text-xl text-blue-100 mb-8">
+                Choose a simulation to start your journey into the world of database engine mechanics
+            </p>
+            <div class="flex flex-wrap justify-center gap-4">
+                <a href="/mvcc" class="bg-white text-blue-600 hover:bg-blue-50 font-bold py-3 px-8 rounded-xl transition duration-300 shadow-lg shadow-blue-900/30 transform hover:scale-105">
+                    <i class="fas fa-layer-group mr-2"></i>
+                    Try MVCC
+                </a>
+                <a href="/deadlock" class="bg-white text-red-600 hover:bg-red-50 font-bold py-3 px-8 rounded-xl transition duration-300 shadow-lg shadow-red-900/30 transform hover:scale-105">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    Try Deadlock Detection
+                </a>
+                <a href="/two-phase-locking" class="bg-white text-green-600 hover:bg-green-50 font-bold py-3 px-8 rounded-xl transition duration-300 shadow-lg shadow-green-900/30 transform hover:scale-105">
+                    <i class="fas fa-chart-line mr-2"></i>
+                    Try 2PL Benchmark
+                </a>
+            </div>
+        </div>
+        
+        <!-- Decorative elements -->
+        <div class="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-slate-900 to-transparent"></div>
+        <div class="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-slate-900 to-transparent"></div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 py-12 px-4 sm:px-6 lg:px-8 border-t border-slate-800">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-8">
+                <div class="flex items-center mb-6 md:mb-0">
+                    <span class="text-3xl text-blue-500 mr-2 database-icon"><i class="fas fa-database"></i></span>
+                    <span class="text-2xl font-bold text-white">DB<span class="text-blue-500">Sim</span></span>
+                </div>
+                <div class="flex justify-center space-x-6">
+                    <a href="#" class="h-10 w-10 rounded-full bg-slate-800 hover:bg-blue-900 flex items-center justify-center text-blue-400 hover:text-blue-300 transition transform hover:scale-110">
+                        <i class="fab fa-github text-lg"></i>
+                    </a>
+                    <a href="#" class="h-10 w-10 rounded-full bg-slate-800 hover:bg-blue-900 flex items-center justify-center text-blue-400 hover:text-blue-300 transition transform hover:scale-110">
+                        <i class="fab fa-linkedin text-lg"></i>
+                    </a>
+                    <a href="#" class="h-10 w-10 rounded-full bg-slate-800 hover:bg-blue-900 flex items-center justify-center text-blue-400 hover:text-blue-300 transition transform hover:scale-110">
+                        <i class="fas fa-envelope text-lg"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="border-t border-slate-800 pt-8 text-center">
+                <p class="text-gray-500 text-sm">
+                    <span class="font-semibold text-gradient">Database Simulation Project</span> — Created with ❤️ in 2025
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Progress bar
+        window.addEventListener('scroll', () => {
+            const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrolled = (winScroll / height) * 100;
+            document.getElementById('progress-bar').style.width = scrolled + '%';
+        });
+        
+        // Animate blobs
+        document.addEventListener('mousemove', (e) => {
+            const blob1 = document.getElementById('blob1');
+            const blob2 = document.getElementById('blob2');
+            const blob3 = document.getElementById('blob3');
+            
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+            
+            blob1.style.transform = `translate(${x * 30}px, ${y * 30}px)`;
+            blob2.style.transform = `translate(${-x * 30}px, ${-y * 30}px)`;
+            blob3.style.transform = `translate(${x * -20}px, ${y * 20}px)`;
+        });
+        
+        // Fade-in animation for elements
+        document.addEventListener('DOMContentLoaded', () => {
+            const fadeElements = document.querySelectorAll('.fade-in-element');
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const delay = entry.target.getAttribute('data-delay') || 0;
+                        setTimeout(() => {
+                            entry.target.style.opacity = '1';
+                            entry.target.style.transform = 'translateY(0)';
+                        }, delay * 1000);
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1 });
+            
+            fadeElements.forEach(element => {
+                element.style.opacity = '0';
+                element.style.transform = 'translateY(20px)';
+                element.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+                observer.observe(element);
+            });
+        });
+        
+        // Code animation
+        document.addEventListener('DOMContentLoaded', () => {
+            const codeBlock = document.querySelector('.code-block');
+            if (codeBlock) {
+                const codeLines = codeBlock.querySelectorAll('.code-line');
+                codeLines.forEach((line, index) => {
+                    line.style.opacity = '0';
+                    line.style.transform = 'translateX(-10px)';
+                    line.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    
+                    setTimeout(() => {
+                        line.style.opacity = '1';
+                        line.style.transform = 'translateX(0)';
+                    }, 500 + (index * 150));
+                });
+            }
+        });
+        
+        // 3D Particle Background
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('canvas-container');
+            
+            // Create scene
+            const scene = new THREE.Scene();
+            
+            // Create camera
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 20;
+            
+            // Create renderer
+            const renderer = new THREE.WebGLRenderer({ alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000000, 0);
+            container.appendChild(renderer.domElement);
+            
+            // Create particle geometry
+            const particlesGeometry = new THREE.BufferGeometry();
+            const particlesCount = 1000;
+            
+            const posArray = new Float32Array(particlesCount * 3);
+            
+            for(let i = 0; i < particlesCount * 3; i++) {
+                posArray[i] = (Math.random() - 0.5) * 80;
+            }
+            
+            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            
+            // Create particle material
+            const particlesMaterial = new THREE.PointsMaterial({
+                size: 0.1,
+                color: 0x3b82f6,
+                transparent: true,
+                opacity: 0.5
+            });
+            
+            // Create particle mesh
+            const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+            scene.add(particlesMesh);
+            
+            // Animation
+            function animate() {
+                requestAnimationFrame(animate);
+                particlesMesh.rotation.x += 0.0001;
+                particlesMesh.rotation.y += 0.0001;
+                renderer.render(scene, camera);
+            }
+            animate();
+            
+            // Resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+            
+            // Mouse move interaction
+            window.addEventListener('mousemove', (e) => {
+                particlesMesh.rotation.y = e.clientX * 0.00005;
+                particlesMesh.rotation.x = e.clientY * 0.00005;
+            });
+        });
+        
+        // Add smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 80,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
